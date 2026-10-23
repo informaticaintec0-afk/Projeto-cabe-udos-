@@ -21,24 +21,11 @@ function generate404Plugin(): Plugin {
 
 export default defineConfig(() => {
   return {
-    base: '/Projeto-cabe-udos-/',
+    base: '/',
     plugins: [
       react(),
       tailwindcss(),
       generate404Plugin(),
-      {
-        name: 'dev-root-redirect',
-        configureServer(server) {
-          server.middlewares.use((req, res, next) => {
-            if (req.url === '/' || req.url === '/index.html') {
-              res.writeHead(302, { Location: '/Projeto-cabe-udos-/' });
-              res.end();
-              return;
-            }
-            next();
-          });
-        },
-      },
     ],
     resolve: {
       alias: {
