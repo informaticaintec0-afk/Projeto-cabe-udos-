@@ -54,8 +54,8 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
   const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-20 pointer-events-none p-2 sm:p-3 select-none">
-      <div className="max-w-5xl mx-auto flex items-center justify-between gap-2 sm:gap-3">
+    <header className="absolute top-0 left-0 right-0 z-20 pointer-events-none p-1 sm:p-2.5 pt-[max(env(safe-area-inset-top,0px),4px)] px-[max(env(safe-area-inset-left,0px),8px)] select-none">
+      <div className="max-w-5xl mx-auto flex items-center justify-between gap-1.5 sm:gap-3">
         {/* Painel do Jogador 1 (Escudo + Nome + Barra de Super) */}
         <div className="flex items-center gap-2 sm:gap-2.5 pointer-events-auto bg-slate-900/90 backdrop-blur-md px-2.5 py-1.5 rounded-2xl border border-slate-700/80 shadow-lg">
           <ClubCrest clubId={p1Team.id} size={36} className="shrink-0 drop-shadow" />

@@ -11,16 +11,20 @@
     -webkit-user-select: none;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
   }
 
-  html, body {
+  html, body, #root {
     margin: 0;
     padding: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
+    min-height: -webkit-fill-available;
     overflow: hidden;
     position: fixed;
-    background-color: #030712;
+    inset: 0;
+    background-color: #020617;
     color: #f8fafc;
     font-family: var(--font-body);
   }
@@ -38,5 +42,13 @@
 }
 
 .touch-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.94);
+}
+
+/* Suporte a Safe Areas para celulares Android e iOS com entalhe/câmera e barra de navegação */
+.safe-area-container {
+  padding-top: max(env(safe-area-inset-top, 0px), 6px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 6px);
+  padding-left: max(env(safe-area-inset-left, 0px), 10px);
+  padding-right: max(env(safe-area-inset-right, 0px), 10px);
 }

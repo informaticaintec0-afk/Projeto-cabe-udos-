@@ -1,9 +1,9 @@
 const CACHE_NAME = 'futebol-retro-v1';
 const APP_SHELL = [
-  '/Projeto-cabe-udos-/',
-  '/Projeto-cabe-udos-/manifest.json',
-  '/Projeto-cabe-udos-/icon-192.png',
-  '/Projeto-cabe-udos-/icon-512.png'
+  '/',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {

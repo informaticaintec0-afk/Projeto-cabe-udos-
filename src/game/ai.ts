@@ -9,7 +9,7 @@ import { AIDifficulty } from './types';
 import { predictBallTrajectory, BallTrajectoryForecast, clamp } from './physics';
 
 export class SoccerAI {
-  private difficulty: AIDifficulty;
+  public difficulty: AIDifficulty;
   private thinkTimer: number = 0;
   private thinkInterval: number = 0.04; // 25 decisões por segundo para resposta fluida
   private currentMoveDir: number = 0;

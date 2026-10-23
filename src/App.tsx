@@ -187,18 +187,18 @@ export default function App() {
   }, []);
 
   return (
-    <main className="relative w-screen h-screen overflow-hidden bg-slate-950 flex items-center justify-center select-none touch-none">
+    <main className="fixed inset-0 w-full h-[100dvh] overflow-hidden bg-slate-950 flex items-center justify-center select-none touch-none">
       {/* Aviso de orientação para tela em pé no celular */}
       <OrientationNotice />
 
       {/* Container responsivo do Canvas (proporção 16:9 arcade adaptada para mobile e desktop) */}
-      <div className="relative w-full h-full flex items-center justify-center p-0 m-0">
+      <div className="relative w-full h-full flex items-center justify-center p-0 m-0 overflow-hidden">
         <canvas
           ref={canvasRef}
-          className="w-full h-full object-contain max-h-screen bg-black"
+          className="w-full h-full object-contain max-h-[100dvh] max-w-[100vw] bg-black"
           style={{
             aspectRatio: '16/9',
-            maxHeight: '100vh',
+            maxHeight: '100dvh',
             maxWidth: '100vw',
           }}
         />
