@@ -17,6 +17,9 @@ export class Ball {
   public angularVelocity: number = 0;
   public isSuper: boolean = false;
   public superTimer: number = 0;
+  public isKicked: boolean = false;
+  public kickTimer: number = 0;
+  public kickPower: number = 0;
   public trail: Array<{ x: number; y: number; alpha: number; isSuper?: boolean }> = [];
   public lastHitBy: 'p1' | 'p2' | null = null;
 
@@ -33,6 +36,9 @@ export class Ball {
     this.angularVelocity = (Math.random() - 0.5) * 4;
     this.isSuper = false;
     this.superTimer = 0;
+    this.isKicked = false;
+    this.kickTimer = 0;
+    this.kickPower = 0;
     this.trail = [];
     this.lastHitBy = null;
   }
@@ -54,7 +60,14 @@ export class Ball {
     this.rotation += this.angularVelocity * dt;
     this.angularVelocity *= 0.98;
 
-    // Temporizador de Super Chute
+    // Temporizador de Chute e Super Chute
+    if (this.kickTimer > 0) {
+      this.kickTimer -= dt;
+      if (this.kickTimer <= 0) {
+        this.isKicked = false;
+      }
+    }
+
     if (this.isSuper) {
       this.superTimer -= dt;
       if (this.superTimer <= 0) {
@@ -62,17 +75,17 @@ export class Ball {
       }
     }
 
-    // Rastro da bola (especialmente para chutes rápidos)
+    // Rastro visual da bola (ativado para chutes velozes ou super chute)
     const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-    if (speed > 250 || this.isSuper) {
-      this.trail.push({ x: this.x, y: this.y, alpha: 0.8, isSuper: this.isSuper });
-      if (this.trail.length > 8) {
+    if (speed > 280 || this.isKicked || this.isSuper) {
+      this.trail.push({ x: this.x, y: this.y, alpha: 0.85, isSuper: this.isSuper });
+      if (this.trail.length > 10) {
         this.trail.shift();
       }
     } else if (this.trail.length > 0) {
       this.trail.shift();
     }
-    this.trail.forEach(t => t.alpha *= 0.85);
+    this.trail.forEach(t => (t.alpha *= 0.84));
 
     // Colisão com Teto
     if (this.y - this.radius < ceilingY) {
@@ -81,14 +94,14 @@ export class Ball {
       sound.playBounce(0.3);
     }
 
-    // Colisão com Paredes laterais externas
+    // Colisão com Paredes laterais externas (garante velocidade mínima de retorno)
     if (this.x - this.radius < leftWall) {
       this.x = leftWall + this.radius;
-      this.vx = Math.abs(this.vx) * 0.75;
+      this.vx = Math.max(Math.abs(this.vx) * 0.75, 45);
       sound.playBounce(0.3);
     } else if (this.x + this.radius > rightWall) {
       this.x = rightWall - this.radius;
-      this.vx = -Math.abs(this.vx) * 0.75;
+      this.vx = -Math.max(Math.abs(this.vx) * 0.75, 45);
       sound.playBounce(0.3);
     }
 
@@ -109,19 +122,28 @@ export class Ball {
   }
 
   public applyKick(angle: number, power: number, isSuper: boolean = false, fromWho: 'p1' | 'p2' = 'p1') {
+    // Aplica impulso vetorial nítido
     this.vx = Math.cos(angle) * power;
     this.vy = -Math.sin(angle) * power;
-    this.angularVelocity = (this.vx > 0 ? 1 : -1) * (power / 40);
+    this.angularVelocity = (this.vx > 0 ? 1 : -1) * (power / 32);
     this.lastHitBy = fromWho;
+    this.isKicked = true;
+    this.kickTimer = 0.55;
+    this.kickPower = power;
+
+    // Descola a bola imediatamente do chão para evitar atrito estático no primeiro frame
+    if (this.y + this.radius >= 584) {
+      this.y = 590 - this.radius - 6;
+    }
 
     if (isSuper) {
       this.isSuper = true;
-      this.superTimer = 2.2;
-      this.vx *= 1.35;
-      this.vy *= 1.2;
+      this.superTimer = 2.4;
+      this.vx *= 1.30;
+      this.vy *= 1.15;
       sound.playSuperKick();
     } else {
-      sound.playKick(power / 600);
+      sound.playKick(Math.min(1.5, power / 650));
     }
   }
 }
@@ -146,6 +168,8 @@ export class Player {
   public kickProgress: number = 0; // 0 a 1 durante a animação
   public kickDuration: number = 0.22; // segundos
   public kickCooldown: number = 0;
+  public hasHitBallThisKick: boolean = false;
+  public kickedCooldownTimer: number = 0; // Impede que o próprio tronco do jogador anule o chute recém-desferido
 
   // Sistema de Chute Carregado com Mira
   public isChargingKick: boolean = false;
@@ -207,6 +231,8 @@ export class Player {
     this.isKicking = false;
     this.kickProgress = 0;
     this.kickCooldown = 0;
+    this.hasHitBallThisKick = false;
+    this.kickedCooldownTimer = 0;
     this.isChargingKick = false;
     this.kickCharge = 0;
     this.lastReleasedCharge = 0;
@@ -230,6 +256,31 @@ export class Player {
       x: this.x + forwardOffset,
       y: this.y + heightOffset
     };
+  }
+
+  /**
+   * Avalia se a bola está na zona de alcance do chute (chuteira + arco de varredura frontal)
+   */
+  public canStrikeBall(ballX: number, ballY: number, ballRadius: number): boolean {
+    const foot = this.getFootPos();
+    const footHitRadius = 48;
+    const dxFoot = ballX - foot.x;
+    const dyFoot = ballY - foot.y;
+    const footDistSq = dxFoot * dxFoot + dyFoot * dyFoot;
+    const reachRadius = footHitRadius + ballRadius;
+
+    if (footDistSq < reachRadius * reachRadius) {
+      return true;
+    }
+
+    // Varredura frontal estendida para garantir resposta instantânea sem cliques falhos
+    const forwardDist = (ballX - this.x) * this.facing;
+    const verticalDist = ballY - (this.y - 30);
+    if (forwardDist >= -10 && forwardDist <= 82 + ballRadius && Math.abs(verticalDist) <= 52 + ballRadius) {
+      return true;
+    }
+
+    return false;
   }
 
   public update(dt: number, groundY: number, ball: Ball) {
@@ -267,11 +318,15 @@ export class Player {
       if (this.kickProgress >= 1.0) {
         this.isKicking = false;
         this.kickProgress = 0;
+        this.hasHitBallThisKick = false;
         this.kickCooldown = this.team.ability?.id === 'esquadrao' ? 0.08 : 0.12;
       }
     }
     if (this.kickCooldown > 0) {
       this.kickCooldown -= dt;
+    }
+    if (this.kickedCooldownTimer > 0) {
+      this.kickedCooldownTimer -= dt;
     }
     if (this.jumpCooldown > 0) {
       this.jumpCooldown -= dt;
@@ -380,6 +435,7 @@ export class Player {
     if (!this.isKicking && this.kickCooldown <= 0) {
       this.isKicking = true;
       this.kickProgress = 0;
+      this.hasHitBallThisKick = false;
       return true;
     }
     return false;
@@ -394,6 +450,7 @@ export class Player {
       this.superMeter = 0;
       this.isKicking = true;
       this.kickProgress = 0;
+      this.hasHitBallThisKick = false;
       return true;
     }
     return false;
@@ -456,6 +513,8 @@ export class ParticleSystem {
         }
       } else if (p.shape === 'smoke') {
         p.size += dt * 18;
+      } else if (p.shape === 'shockwave' || p.shape === 'ring') {
+        p.size += dt * 90;
       }
 
       if (p.life >= p.maxLife) {
@@ -513,6 +572,68 @@ export class ParticleSystem {
         alpha: 1,
         life: 0,
         maxLife: 0.25 + Math.random() * 0.2,
+        shape: 'spark'
+      });
+    }
+  }
+
+  /**
+   * Efeito de choque visual (anel expansivo + rajada de vento) no impacto do chute
+   */
+  public addKickShockwave(x: number, y: number, facing: number, isSuper: boolean = false) {
+    // 1. Anel de impacto que expande rapidamente
+    this.particles.push({
+      x,
+      y,
+      vx: facing * 40,
+      vy: -15,
+      size: 14,
+      color: isSuper ? '#F97316' : '#FEF08A',
+      alpha: 0.9,
+      life: 0,
+      maxLife: 0.22,
+      shape: 'shockwave'
+    });
+
+    // 2. Linhas de ar / faíscas direcionais para a frente
+    const sparkCount = isSuper ? 16 : 8;
+    const baseAngle = facing === 1 ? -0.4 : Math.PI + 0.4;
+    for (let i = 0; i < sparkCount; i++) {
+      const spread = (Math.random() - 0.5) * 0.7;
+      const angle = baseAngle + spread;
+      const speed = 140 + Math.random() * 260;
+      this.particles.push({
+        x: x + facing * 8,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 2.5 + Math.random() * 2.5,
+        color: isSuper ? '#EF4444' : '#FACC15',
+        alpha: 1,
+        life: 0,
+        maxLife: 0.2 + Math.random() * 0.15,
+        shape: 'spark'
+      });
+    }
+  }
+
+  /**
+   * Faíscas e poeira quando um zagueiro bloqueia uma finalização
+   */
+  public addBlockSparks(x: number, y: number) {
+    for (let i = 0; i < 10; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 80 + Math.random() * 160;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 3 + Math.random() * 2,
+        color: '#38BDF8',
+        alpha: 1,
+        life: 0,
+        maxLife: 0.25,
         shape: 'spark'
       });
     }

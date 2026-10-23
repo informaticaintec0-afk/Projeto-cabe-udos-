@@ -1,7 +1,8 @@
 /**
  * Inteligência Artificial para o Adversário no Modo 1 contra 1
- * Utiliza previsão balística da trajetória da bola (gravidade, quique e tempo de chegada),
- * posicionamento defensivo antecipado, interceptação aérea no timing correto e contra-ataque.
+ * Utiliza a mesma mecânica física de chute e salto disponível para o jogador humano.
+ * Reconhece oportunidades reais de finalização ao gol, ângulo, cobertura do goleiro,
+ * disputas de meio-campo e alívio defensivo, com calibração por nível de dificuldade.
  */
 
 import { Player, Ball } from './entities';
@@ -11,11 +12,11 @@ import { predictBallTrajectory, BallTrajectoryForecast, clamp } from './physics'
 export class SoccerAI {
   public difficulty: AIDifficulty;
   private thinkTimer: number = 0;
-  private thinkInterval: number = 0.04; // 25 decisões por segundo para resposta fluida
+  private thinkInterval: number = 0.04; // 25 decisões por segundo para resposta ágil e suave
   private currentMoveDir: number = 0;
   private shouldJump: boolean = false;
   private shouldKick: boolean = false;
-  private targetHoldX: number = 960;
+  private kickChargeIntensity: number = 0.3;
 
   constructor(difficulty: AIDifficulty = 'medio') {
     this.difficulty = difficulty;
@@ -25,9 +26,15 @@ export class SoccerAI {
     this.difficulty = diff;
   }
 
-  public update(dt: number, aiPlayer: Player, ball: Ball, isKickoffDropPhase: boolean = false) {
-    // REGRA 1: No início da jogada enquanto a bola desce até o primeiro toque no chão,
-    // a IA fica estritamente congelada, sem mover, pular ou chutar (igualdade total com o humano).
+  public update(
+    dt: number,
+    aiPlayer: Player,
+    ball: Ball,
+    opponentPlayer: Player,
+    isKickoffDropPhase: boolean = false
+  ) {
+    // 1. Fase de Reposição Inicial (bola caindo do alto até o primeiro toque no chão):
+    // Congelamento estrito para paridade absoluta com o jogador humano.
     if (isKickoffDropPhase) {
       this.currentMoveDir = 0;
       this.shouldJump = false;
@@ -40,10 +47,10 @@ export class SoccerAI {
     this.thinkTimer += dt;
     if (this.thinkTimer >= this.thinkInterval) {
       this.thinkTimer = 0;
-      this.decide(aiPlayer, ball);
+      this.decide(aiPlayer, ball, opponentPlayer);
     }
 
-    // Executa as ações decididas
+    // 2. Execução das movimentações decididas
     if (this.currentMoveDir !== 0) {
       aiPlayer.move(this.currentMoveDir);
     }
@@ -53,107 +60,143 @@ export class SoccerAI {
       this.shouldJump = false;
     }
 
+    // 3. Execução do Chute com a mesma mecânica do humano
     if (this.shouldKick) {
-      // Se tiver super chute disponível e dificuldade for média/difícil, dispara o especial
-      if (this.difficulty !== 'facil' && aiPlayer.canSuperKick() && Math.random() < 0.75) {
+      // Disparo de Super Chute se disponível e em situação ofensiva
+      if (this.difficulty !== 'facil' && aiPlayer.canSuperKick() && Math.random() < 0.85) {
         aiPlayer.triggerSuperKick();
       } else {
-        // Varia a carga do chute dependendo da distância para o gol adversário (trave esquerda = 110)
-        const distToOpponentGoal = aiPlayer.x - 110;
-        if (distToOpponentGoal > 550) {
-          aiPlayer.lastReleasedCharge = this.difficulty === 'dificil' ? 0.75 : 0.55;
-        } else {
-          aiPlayer.lastReleasedCharge = 0.25;
-        }
+        // Aplica a intensidade calculada na decisão tática
+        aiPlayer.lastReleasedCharge = this.kickChargeIntensity;
         aiPlayer.kick();
       }
       this.shouldKick = false;
     }
   }
 
-  private decide(ai: Player, ball: Ball) {
-    // Calibração de latência e precisão baseadas na dificuldade
-    let reactionChance = 0.90;
-    let timingForgiveness = 0.05; // margem de timing em segundos
-    let errorNoise = 0; // erro em pixels na posição estimada
+  private decide(ai: Player, ball: Ball, opponent: Player) {
+    // Calibração de latência perceptiva e precisão baseadas na dificuldade
+    let reactionChance = 0.92;
+    let timingForgiveness = 0.04;
+    let errorNoise = 0;
 
     if (this.difficulty === 'facil') {
-      reactionChance = 0.70;
-      timingForgiveness = 0.12;
-      errorNoise = (Math.random() - 0.5) * 50;
+      reactionChance = 0.72;
+      timingForgiveness = 0.10;
+      errorNoise = (Math.random() - 0.5) * 45;
     } else if (this.difficulty === 'dificil') {
       reactionChance = 0.99;
-      timingForgiveness = 0.02;
-      errorNoise = (Math.random() - 0.5) * 8;
+      timingForgiveness = 0.015;
+      errorNoise = (Math.random() - 0.5) * 6;
     }
 
     if (Math.random() > reactionChance) {
-      return; // simula imperfeição humana / latência perceptiva
+      return; // Latência natural
     }
 
-    // Calcula previsão balística da trajetória da bola em tempo real
+    // Identificação dinâmica da meta adversária e própria (suporta P2 ou P1 como IA)
+    const forwardDir = ai.facing; // 1 (olha direita, ataca gol direito) ou -1 (olha esquerda, ataca gol esquerdo)
+    const targetGoalX = forwardDir === 1 ? 1170 : 110;
+    const ownGoalX = forwardDir === 1 ? 110 : 1170;
+
+    const distToTargetGoal = Math.abs(targetGoalX - ai.x);
+    const distToOwnGoal = Math.abs(ownGoalX - ai.x);
+
+    // Relação espacial com a bola
+    const ballRelativeX = (ball.x - ai.x) * forwardDir; // > 0 se a bola está à frente em direção ao gol adversário
+    const isBallInFront = ballRelativeX > -15;
+    const distToBall = Math.abs(ball.x - ai.x);
+    const ballHeight = ball.y; // 570 no chão, 390 na trave
+    const isBallOnGroundOrWaist = ballHeight >= 400; // bola em altura de chute
+
+    // Previsão balística em tempo real da trajetória da bola
     const forecast: BallTrajectoryForecast = predictBallTrajectory(ball, ai.x, 590, 1.8);
     const aiHead = ai.getHeadPos();
-    const ownGoalX = 1170; // Trave direita defendida pela IA
-    const distToBall = Math.abs(ball.x - ai.x);
-    const kickRange = this.difficulty === 'dificil' ? 95 : 85;
+    const kickStrikeRange = this.difficulty === 'dificil' ? 100 : 90;
+
+    // Distância do goleiro adversário até a meta que defende
+    const opponentDistToOwnGoal = Math.abs(targetGoalX - opponent.x);
+    const isOpponentOutOfPosition = opponentDistToOwnGoal > 240;
 
     // =========================================================================
-    // PRIORIDADE 1: DEFESA ATIVA DE GOL (Ameaça direta ao gol da IA)
-    // Se a bola viaja para a direita com velocidade suficiente para ameaçar a meta
+    // SITUAÇÃO 1: OPORTUNIDADE DE FINALIZAÇÃO AO GOL (Ataque / Chute)
+    // Se a bola está em posse ou acessível na frente da IA, com ângulo para o gol
     // =========================================================================
-    const isHeadingTowardsGoal = ball.vx > 70;
-    const isDeepInDefense = ball.x > 820;
+    const isInShootingZone = distToTargetGoal < 840;
 
-    if (forecast.threatToRightGoal || (isHeadingTowardsGoal && isDeepInDefense)) {
-      // 1.1 Posicionamento antecipado: vai para a coordenada X ideal de bloqueio
-      // Fica entre 980 e 1090 (na frente da linha do gol 1170 para não entrar com a bola)
-      const idealBlockX = clamp(
-        Math.min(forecast.landingX - 10, 1070) + errorNoise,
-        960,
-        1090
-      );
+    if (isInShootingZone && isBallInFront && distToBall <= kickStrikeRange + 15) {
+      if (isBallOnGroundOrWaist) {
+        // NÃO PULA! A IA fica no chão para chutar com o pé
+        this.shouldJump = false;
+        this.shouldKick = true;
 
-      if (ai.x > idealBlockX + 18) {
-        this.currentMoveDir = -1; // avança para fechar o ângulo
-      } else if (ai.x < idealBlockX - 18) {
-        this.currentMoveDir = 1; // recua para guardar a meta
+        // Calibra a força e o ângulo do chute baseado na distância do gol
+        if (distToTargetGoal > 480) {
+          // Chute de média/longa distância: bomba potente
+          this.kickChargeIntensity = this.difficulty === 'dificil' ? 0.85 : (this.difficulty === 'medio' ? 0.65 : 0.40);
+        } else if (isOpponentOutOfPosition) {
+          // Goleiro adiantado: chute colocado com curva
+          this.kickChargeIntensity = 0.50;
+        } else {
+          // Chute de perto: finalização rápida e elevada
+          this.kickChargeIntensity = this.difficulty === 'dificil' ? 0.40 : 0.25;
+        }
+
+        // Dá um passo curto para a frente para transferir impulso
+        this.currentMoveDir = forwardDir * 0.7;
+        return;
+      } else if (ballHeight < 420 && ballHeight > 340 && distToBall < 85) {
+        // Bola alta no ataque: cabeceio ofensivo ao gol
+        this.shouldJump = true;
+        this.currentMoveDir = forwardDir;
+        return;
+      }
+    }
+
+    // =========================================================================
+    // SITUAÇÃO 2: DEFESA ATIVA DE GOL (Ameaça iminente à meta própria)
+    // =========================================================================
+    const isHeadingTowardsOwnGoal = (forwardDir === 1 ? ball.vx < -70 : ball.vx > 70);
+    const isDeepInDefense = distToOwnGoal < 380;
+    const isThreat = (forwardDir === -1 ? forecast.threatToRightGoal : (ball.x <= 220 && isHeadingTowardsOwnGoal));
+
+    if (isThreat || (isHeadingTowardsOwnGoal && isDeepInDefense)) {
+      // 2.1 Posicionamento defensivo seguro
+      const blockXOffset = forwardDir === 1 ? 160 : -160;
+      const idealBlockX = clamp(ownGoalX + blockXOffset + errorNoise, 160, 1120);
+
+      if (Math.abs(ai.x - idealBlockX) > 20) {
+        this.currentMoveDir = ai.x > idealBlockX ? -1 : 1;
       } else {
-        this.currentMoveDir = 0; // plantado no ponto ótimo de interceptação
+        this.currentMoveDir = 0;
       }
 
-      // 1.2 Interceptação Aérea com timing sincronizado
-      // Se a bola cruzar a linha da IA nos próximos 0.12 a 0.38 segundos
+      // 2.2 Bloqueio de Emergência: Chute de Alívio / Afastamento
+      if (isBallInFront && distToBall < kickStrikeRange + 15 && isBallOnGroundOrWaist) {
+        this.shouldKick = true;
+        this.kickChargeIntensity = this.difficulty === 'dificil' ? 0.75 : 0.50;
+        return;
+      }
+
+      // 2.3 Interceptação Aérea: Pula somente se a bola estiver alta e em direção à rede
       if (forecast.interceptTimeAtAi !== null) {
         const timeToHit = forecast.interceptTimeAtAi;
         const expectedY = forecast.interceptHeightAtAi ?? 500;
 
-        // Bola alta/média (entre peito e travessão): PULA PARA CABECEAR/BLOQUEAR
-        if (expectedY < 525 && expectedY > 360) {
-          if (timeToHit <= 0.36 + timingForgiveness && timeToHit >= 0.08) {
+        // Se a bola vier na altura da cabeça ou travessão
+        if (expectedY < 515 && expectedY > 360) {
+          if (timeToHit <= 0.35 + timingForgiveness && timeToHit >= 0.08) {
             this.shouldJump = true;
           }
-        } else if (expectedY >= 525) {
-          // Bola rasteira: NÃO pula (evita pular por cima da bola!), aguarda para chutar no chão
+        } else if (expectedY >= 515) {
+          // Bola rasteira: Fica firme no chão para rebater ou chutar
           this.shouldJump = false;
         }
       }
 
-      // 1.3 Bloqueio de emergência caso a bola esteja a curta distância
-      if (ball.x < ai.x && distToBall < 115) {
-        // Bola na altura da cabeça: cabeceia para afastar
-        if (ball.y < aiHead.y + 25 && ball.y > 380) {
-          this.shouldJump = true;
-        }
-        // Bola ao alcance dos pés: chuta para afastar para o campo de ataque
-        if (distToBall < kickRange + 20 && ball.y > 450) {
-          this.shouldKick = true;
-        }
-      }
-
-      // 1.4 Se a bola já passou do bot e está indo para a rede (último recurso)
-      if (ball.x > ai.x && ball.x < ownGoalX) {
-        this.currentMoveDir = 1; // perseguição desesperada na linha de gol
+      // 2.4 Último recurso caso a bola passe da linha da IA
+      if ((forwardDir === 1 ? ball.x < ai.x : ball.x > ai.x) && distToOwnGoal > 60) {
+        this.currentMoveDir = -forwardDir; // persegue em direção à linha
         if (distToBall < 110 && ball.y < 560) {
           this.shouldJump = true;
           this.shouldKick = true;
@@ -164,86 +207,56 @@ export class SoccerAI {
     }
 
     // =========================================================================
-    // PRIORIDADE 2: DISPUTA DE MEIO-CAMPO E BOLA AÉREA (Kickoff e Quiques)
-    // Antecipa onde a bola vai quicar e avança para disputar, não ficando passiva
+    // SITUAÇÃO 3: DISPUTA DE MEIO-CAMPO E ANTECIPAÇÃO DE QUICQUE
     // =========================================================================
-    const isContestableInMidfield = forecast.landingX >= 520 && forecast.landingX <= 960;
+    const isContestable = Math.abs(forecast.landingX - ai.x) < 380;
 
-    if (isContestableInMidfield) {
-      const targetArrivalX = clamp(forecast.landingX + 25 + errorNoise, 580, 980);
+    if (isContestable) {
+      // Corre para antecipar onde a bola vai tocar o chão
+      const targetArrivalX = clamp(forecast.landingX + forwardDir * -20 + errorNoise, 200, 1080);
 
-      if (ai.x > targetArrivalX + 22) {
-        this.currentMoveDir = -1; // corre em direção à bola no meio
-      } else if (ai.x < targetArrivalX - 22) {
-        this.currentMoveDir = 1;
+      if (Math.abs(ai.x - targetArrivalX) > 22) {
+        this.currentMoveDir = ai.x > targetArrivalX ? -1 : 1;
       } else {
         this.currentMoveDir = 0;
       }
 
-      // Timing do Pulo na Disputa Aérea:
-      // Se a bola estiver caindo na zona do bot e estiver ao alcance de um cabeceio aéreo
-      if (distToBall < 140 && ball.y < aiHead.y + 40 && ball.y > 380) {
-        // Pula com agressividade para não deixar o adversário cabecear sozinho
-        this.shouldJump = true;
+      // Se a bola chegar perto no chão e estiver à frente: CHUTA para armar contra-ataque
+      if (isBallInFront && distToBall < kickStrikeRange && isBallOnGroundOrWaist) {
+        this.shouldKick = true;
+        this.kickChargeIntensity = this.difficulty === 'dificil' ? 0.70 : 0.45;
+        return;
       }
 
-      // Se a bola chegar no chão e estiver ao alcance da chuteira
-      if (distToBall < kickRange && ball.y > 460) {
-        this.shouldKick = true;
+      // Pula somente se a bola estiver realmente no ar (acima do peito)
+      if (distToBall < 110 && ballHeight < aiHead.y + 15 && ballHeight > 370 && !isBallOnGroundOrWaist) {
+        this.shouldJump = true;
+        return;
       }
 
       return;
     }
 
     // =========================================================================
-    // PRIORIDADE 3: BOLA NO CAMPO ADVERSÁRIO (Ataque da IA, x < 520)
-    // Mantém posicionamento de contenção equilibrado e cobre contra-ataques
+    // SITUAÇÃO 4: BOLA NO ATAQUE / PERSEGUIÇÃO DA JOGADA
     // =========================================================================
-    if (ball.x < 520) {
-      // Posicionamento tático de contenção seguro
-      const safeContainmentX = 780 + (ball.x / 520) * 140;
+    if (isBallInFront) {
+      // Avança em velocidade em direção à bola
+      this.currentMoveDir = forwardDir;
 
-      if (ai.x > safeContainmentX + 25) {
-        this.currentMoveDir = -1;
-      } else if (ai.x < safeContainmentX - 25) {
-        this.currentMoveDir = 1;
-      } else {
-        this.currentMoveDir = 0;
-      }
-
-      // Se o humano chutar alto e a bola vier voando rapidamente em sua direção
-      if (ball.vx > 200 && ball.x > 400 && distToBall < 180 && ball.y < 480) {
-        if (Math.random() < 0.85) {
+      // Se atingir a zona de finalização
+      if (distToBall < kickStrikeRange) {
+        if (isBallOnGroundOrWaist) {
+          this.shouldKick = true;
+          this.kickChargeIntensity = this.difficulty === 'dificil' ? 0.65 : 0.35;
+        } else if (ballHeight < aiHead.y + 20 && ballHeight > 360) {
           this.shouldJump = true;
         }
       }
-
-      return;
-    }
-
-    // =========================================================================
-    // PRIORIDADE 4: DISPUTA OFENSIVA / FINALIZAÇÃO (Bola dominável no ataque)
-    // =========================================================================
-    if (ball.x < ai.x) {
-      if (distToBall > kickRange - 15) {
-        this.currentMoveDir = -1; // avança para roubar a bola
-      } else {
-        this.currentMoveDir = -0.5; // desacelera para mirar o chute
-      }
-
-      // Cabeceio ofensivo
-      if (ball.y < aiHead.y + 20 && ball.y > aiHead.y - 65 && distToBall < 95) {
-        this.shouldJump = true;
-      }
-
-      // Chute ofensivo em direção ao gol adversário (à esquerda)
-      if (distToBall < kickRange && ball.y > 440) {
-        this.shouldKick = true;
-      }
     } else {
-      // Bola atrás do bot por drible ou desvio
-      this.currentMoveDir = 1; // recua para recuperar a frente da jogada
-      if (ball.y < 520 && distToBall < 100) {
+      // A bola passou atrás da IA: recua para recuperar a frente da jogada
+      this.currentMoveDir = -forwardDir;
+      if (distToBall < 90 && ballHeight < 510) {
         this.shouldJump = true;
       }
     }

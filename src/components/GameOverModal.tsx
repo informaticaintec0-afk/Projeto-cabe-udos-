@@ -1,10 +1,13 @@
 /**
  * Modal de Fim de Jogo (GameOverModal)
- * Otimizado para não cortar elementos em celulares Android em modo paisagem.
+ * Exibe resultado da partida, placar final com escudos e botões de navegação:
+ * - Revanche (repetir partida com os mesmos times)
+ * - Voltar à seleção de times (retorna ao fluxo de Minha Equipe / Equipe Adversária)
+ * - Voltar ao menu (retorna à tela inicial)
  */
 
 import React from 'react';
-import { RotateCcw, Home, Trophy } from 'lucide-react';
+import { RotateCcw, Home, Trophy, Users } from 'lucide-react';
 import { MatchStats, TeamPreset } from '../game/types';
 import { ClubCrest } from '../game/crests';
 
@@ -14,6 +17,7 @@ interface GameOverModalProps {
   p1Team: TeamPreset;
   p2Team: TeamPreset;
   onPlayAgain: () => void;
+  onGoToSelection: () => void;
   onGoToMenu: () => void;
 }
 
@@ -23,6 +27,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   p1Team,
   p2Team,
   onPlayAgain,
+  onGoToSelection,
   onGoToMenu,
 }) => {
   const isP1Winner = winner === 'p1';
@@ -91,24 +96,38 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           </div>
         </div>
 
-        {/* Botões de Ação */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={onPlayAgain}
-            className="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/50 active:scale-95 transition-all touch-btn cursor-pointer"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Revanche</span>
-          </button>
+        {/* Três Botões de Ação: Revanche, Voltar à Seleção e Voltar ao Menu */}
+        <div className="flex flex-col gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-2 gap-2">
+            {/* Revanche */}
+            <button
+              type="button"
+              onClick={onPlayAgain}
+              className="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg active:scale-95 transition-all touch-btn cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Revanche</span>
+            </button>
 
+            {/* Voltar à seleção de times */}
+            <button
+              type="button"
+              onClick={onGoToSelection}
+              className="py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg active:scale-95 transition-all touch-btn cursor-pointer"
+            >
+              <Users className="w-4 h-4" />
+              <span>Seleção</span>
+            </button>
+          </div>
+
+          {/* Voltar ao Menu Principal */}
           <button
             type="button"
             onClick={onGoToMenu}
-            className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm tracking-wide flex items-center justify-center gap-1.5 active:scale-95 transition-all touch-btn cursor-pointer"
+            className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs sm:text-sm tracking-wide flex items-center justify-center gap-1.5 active:scale-95 transition-all touch-btn cursor-pointer border border-slate-700"
           >
-            <Home className="w-4 h-4" />
-            <span>Clubes</span>
+            <Home className="w-4 h-4 text-slate-400" />
+            <span>Voltar ao Menu Principal</span>
           </button>
         </div>
       </div>

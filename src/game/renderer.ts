@@ -1081,12 +1081,14 @@ export class GameRenderer {
   private drawBall(ctx: CanvasRenderingContext2D, ball: Ball) {
     ctx.save();
 
-    // Rastro de velocidade ou super chute
+    // Rastro de velocidade, chute potente ou super chute
     if (ball.trail.length > 1) {
       ball.trail.forEach(t => {
         ctx.fillStyle = t.isSuper
           ? `rgba(249, 115, 22, ${t.alpha * 0.6})`
-          : `rgba(255, 255, 255, ${t.alpha * 0.25})`;
+          : (ball.isKicked
+              ? `rgba(250, 204, 21, ${t.alpha * 0.45})`
+              : `rgba(255, 255, 255, ${t.alpha * 0.25})`);
         ctx.beginPath();
         ctx.arc(t.x, t.y, ball.radius * (0.6 + t.alpha * 0.4), 0, Math.PI * 2);
         ctx.fill();
@@ -1182,6 +1184,12 @@ export class GameRenderer {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
+      } else if (p.shape === 'shockwave' || p.shape === 'ring') {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = Math.max(1.5, 3.5 * p.alpha);
+        ctx.stroke();
       } else {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);

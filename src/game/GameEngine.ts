@@ -93,6 +93,15 @@ export class GameEngine {
   public isKickoffDropPhase: boolean = false;
   public kickoffSafetyTimer: number = 0;
 
+  // Monitoramento e Liberação de Bola Presa no Travessão/Baliza
+  private ballStuckTimer: number = 0;
+  private ballStuckCheckX: number = 640;
+  private ballStuckCheckY: number = 240;
+  private consecutiveGoalHits: number = 0;
+  private goalHitWindowTimer: number = 0;
+  private lastPostSoundTime: number = 0;
+  private ballReleaseCooldown: number = 0;
+
   constructor(
     canvas: HTMLCanvasElement,
     p1Team: TeamPreset,
@@ -391,7 +400,7 @@ export class GameEngine {
     this.p1.update(dt, this.groundY, this.ball);
 
     // Atualiza Jogador 2 (Inteligência Artificial) com respeito estrito à fase de reposição
-    this.ai.update(dt, this.p2, this.ball, this.isKickoffDropPhase);
+    this.ai.update(dt, this.p2, this.ball, this.p1, this.isKickoffDropPhase);
     this.p2.update(dt, this.groundY, this.ball);
 
     // Atualiza Bola
@@ -403,7 +412,10 @@ export class GameEngine {
     }
 
     // Resolução de Colisões Físicas
-    this.handleCollisions();
+    this.handleCollisions(dt);
+
+    // Monitoramento e Liberação de Bola Presa no Travessão/Baliza
+    this.checkAndResolveStuckBall(dt);
 
     // Verificação de Gols
     this.checkGoals();
@@ -466,22 +478,23 @@ export class GameEngine {
     const charge = p.kickCharge; // 0.0 a 1.0
     const isSuper = p.canSuperKick();
 
-    // Potência proporcional ao carregamento
-    const basePower = 520 + charge * 290;
-    let kickPower = isSuper ? 880 + charge * 120 : basePower;
+    // Potência proporcional ao carregamento: 780 rápida a 1040 carga total
+    const basePower = 780 + charge * 260;
+    let kickPower = isSuper ? 1160 + charge * 120 : basePower;
 
     // Habilidade CANHÃO (Rubro Imperial) / COLORADO (Internacional)
     if (p.team.ability?.id === 'canhao' || p.team.ability?.id === 'colorado') {
-      kickPower = isSuper ? 1000 : basePower * 1.20 + 50;
+      kickPower = isSuper ? 1280 : basePower * 1.18 + 40;
     } else if (p.team.ability?.id === 'raio_solar' && charge > 0.35) {
       // Sol de Ouro: Chutes carregados devastadores
-      kickPower = isSuper ? 1020 : basePower * 1.28 + 60;
+      kickPower = isSuper ? 1280 : basePower * 1.25 + 50;
     } else if (p.team.ability?.id === 'falcao') {
-      kickPower = isSuper ? 920 : basePower * 1.08 + 20;
+      kickPower = isSuper ? 1200 : basePower * 1.10 + 20;
     }
 
-    // Ângulo de chute
-    let kickAngle = (p.facing === 1 ? 0.65 : Math.PI - 0.65);
+    // Ângulo de chute: rápida tem elevação destacada (0.72 rad / ~41°), carregada afina em laser (0.54 rad / ~31°)
+    const dynamicElevation = 0.72 - charge * 0.18;
+    let kickAngle = (p.facing === 1 ? dynamicElevation : Math.PI - dynamicElevation);
 
     // Habilidade ESTRELA (Estrela Alvinegra) / CONSTELAÇÃO (Cruzeiro Celeste): mira refinada ao ângulo do gol
     if (p.team.ability?.id === 'estrela' || p.team.ability?.id === 'constelacao') {
@@ -535,7 +548,7 @@ export class GameEngine {
     return points;
   }
 
-  private handleCollisions() {
+  private handleCollisions(dt: number) {
     const ball = this.ball;
     const p1 = this.p1;
     const p2 = this.p2;
@@ -560,147 +573,253 @@ export class GameEngine {
     }
 
     // 2. Colisão Bola com as Traves e Travessão
-    this.handleGoalCollisions(this.goalLeft);
-    this.handleGoalCollisions(this.goalRight);
+    this.handleGoalCollisions(this.goalLeft, dt);
+    this.handleGoalCollisions(this.goalRight, dt);
 
     // 3. Colisões de Jogadores com a Bola
     this.handlePlayerBallCollision(p1);
     this.handlePlayerBallCollision(p2);
   }
 
-  private handleGoalCollisions(goal: Goal) {
+  private handleGoalCollisions(goal: Goal, dt: number) {
     const ball = this.ball;
+    const postX = goal.postX;
+    const crossY = goal.crossbarY;
+    const postRadius = goal.postRadius; // 9px
+    const ballRadius = ball.radius; // 20px
+    const cornerRadius = postRadius + ballRadius; // 29px
 
-    // Travessão horizontal (segmento de reta com espessura)
-    const barStartX = goal.isLeft ? goal.postX - goal.depth : goal.postX;
-    const barEndX = goal.isLeft ? goal.postX : goal.postX + goal.depth;
+    // 1. Quina frontal arredondada do travessão (postX, crossbarY)
+    const cornerDx = ball.x - postX;
+    const cornerDy = ball.y - crossY;
+    const cornerDist = Math.sqrt(cornerDx * cornerDx + cornerDy * cornerDy);
+
+    if (cornerDist < cornerRadius && cornerDist > 0.0001) {
+      const nx = cornerDx / cornerDist;
+      const ny = cornerDy / cornerDist;
+      ball.x = postX + nx * (cornerRadius + 0.1);
+      ball.y = crossY + ny * (cornerRadius + 0.1);
+
+      const vn = ball.vx * nx + ball.vy * ny;
+      if (vn < 0) {
+        ball.vx -= 1.82 * vn * nx;
+        ball.vy -= 1.82 * vn * ny;
+        this.triggerPostHitFeedback(ball.x, crossY - 20, Math.abs(vn));
+      }
+
+      // Se a colisão ocorrer na metade superior da quina, aplica deflexão natural para fora
+      const rollDir = goal.isLeft ? 1 : -1;
+      if (ny < -0.2) {
+        ball.vx += rollDir * 80;
+      }
+    }
+
+    // 2. Travessão horizontal (segmento de reta com espessura)
+    // O segmento termina ligeiramente antes da quina para que a quina circular frontal assuma a curvatura
+    const barStartX = goal.isLeft ? 0 : postX + 4;
+    const barEndX = goal.isLeft ? postX - 4 : 1280;
 
     const hitCrossbar = resolveCircleSegmentCollision(
       ball,
       barStartX,
-      goal.crossbarY,
+      crossY,
       barEndX,
-      goal.crossbarY,
+      crossY,
       0.82,
-      7
+      postRadius
     );
 
     if (hitCrossbar) {
-      sound.playPost();
-      this.renderer.triggerScreenShake(7);
-      this.particles.showFloatingText(ball.x, goal.crossbarY - 20, 'TRAVE!', '#facc15');
+      this.triggerPostHitFeedback(ball.x, crossY - 20, Math.abs(ball.vy));
     }
 
-    // Quina frontal arredondada do travessão (postX, crossbarY)
-    const cornerDx = ball.x - goal.postX;
-    const cornerDy = ball.y - goal.crossbarY;
-    const cornerDist = Math.sqrt(cornerDx * cornerDx + cornerDy * cornerDy);
-    const cornerRadius = goal.postRadius + ball.radius;
+    // 3. Força de dispersão e arredondamento virtual no topo do travessão (Anti-Equilíbrio e Anti-Stuck)
+    // Na física real, uma bola esférica nunca fica em repouso estático sobre um cano cilíndrico
+    const isOverGoalFrame = goal.isLeft
+      ? (ball.x <= postX + 15)
+      : (ball.x >= postX - 15);
 
-    if (cornerDist < cornerRadius && cornerDist > 0.001) {
-      const nx = cornerDx / cornerDist;
-      const ny = cornerDy / cornerDist;
-      ball.x = goal.postX + nx * cornerRadius;
-      ball.y = goal.crossbarY + ny * cornerRadius;
+    if (isOverGoalFrame && ball.y <= crossY + 2) {
+      const rollDir = goal.isLeft ? 1 : -1;
 
-      const vn = ball.vx * nx + ball.vy * ny;
-      if (vn < 0) {
-        ball.vx -= 1.8 * vn * nx;
-        ball.vy -= 1.8 * vn * ny;
-        sound.playPost();
-        this.renderer.triggerScreenShake(8);
+      // Impulso de rolagem contínua para descer da trave
+      ball.vx += rollDir * 320 * dt;
+
+      // Garante velocidade horizontal mínima de saída da estrutura do gol
+      if (rollDir === 1 && ball.vx < 110) {
+        ball.vx = Math.max(ball.vx + 60, 110);
+      } else if (rollDir === -1 && ball.vx > -110) {
+        ball.vx = Math.min(ball.vx - 60, -110);
+      }
+
+      // Impede que o quique vertical decaia para repouso ou micro-vibrações
+      if (Math.abs(ball.vy) < 85) {
+        ball.vy = -Math.max(Math.abs(ball.vy), 95);
+      }
+
+      // Separação vertical garantida
+      const safeTopY = crossY - cornerRadius - 1;
+      if (ball.y > safeTopY) {
+        ball.y = safeTopY;
+      }
+
+      this.consecutiveGoalHits++;
+      this.goalHitWindowTimer = 0.5;
+    }
+
+    // 4. Proteção contra quina entre parede externa do estádio e a armação traseira do gol
+    if (goal.isLeft && ball.x < 35 && ball.y <= crossY + 15) {
+      ball.vx = Math.max(ball.vx, 160);
+      ball.vy = Math.min(ball.vy, -80);
+    } else if (!goal.isLeft && ball.x > 1245 && ball.y <= crossY + 15) {
+      ball.vx = Math.min(ball.vx, -160);
+      ball.vy = Math.min(ball.vy, -80);
+    }
+  }
+
+  private triggerPostHitFeedback(x: number, y: number, impactSpeed: number) {
+    this.consecutiveGoalHits++;
+    this.goalHitWindowTimer = 0.5;
+
+    const now = performance.now() / 1000;
+    // Dispara som e tremor de tela somente após cooldown ou em pancadas expressivas
+    if (now - this.lastPostSoundTime > 0.22 || impactSpeed > 170) {
+      this.lastPostSoundTime = now;
+      sound.playPost();
+      this.renderer.triggerScreenShake(Math.min(8, Math.max(3, impactSpeed / 30)));
+      if (impactSpeed > 90) {
+        this.particles.showFloatingText(x, y, 'TRAVE!', '#facc15');
       }
     }
+  }
+
+  private checkAndResolveStuckBall(dt: number) {
+    // Não monitora durante contagem regressiva, comemoração de gol, bola parada ou reposição
+    if (this.state !== 'PLAYING' || this.isKickoffDropPhase) {
+      this.ballStuckTimer = 0;
+      this.consecutiveGoalHits = 0;
+      return;
+    }
+
+    if (this.ballReleaseCooldown > 0) {
+      this.ballReleaseCooldown -= dt;
+    }
+
+    if (this.goalHitWindowTimer > 0) {
+      this.goalHitWindowTimer -= dt;
+      if (this.goalHitWindowTimer <= 0) {
+        this.consecutiveGoalHits = 0;
+      }
+    }
+
+    const ball = this.ball;
+    // Zonas de risco: proximidades do travessão e da armação superior das balizas
+    const inLeftDanger = (ball.x <= this.goalLeft.postX + 35) && (ball.y <= this.goalLeft.crossbarY + 30);
+    const inRightDanger = (ball.x >= this.goalRight.postX - 35) && (ball.y <= this.goalRight.crossbarY + 30);
+
+    if (inLeftDanger || inRightDanger) {
+      const dx = ball.x - this.ballStuckCheckX;
+      const dy = ball.y - this.ballStuckCheckY;
+      const displacement = Math.sqrt(dx * dx + dy * dy);
+
+      // Se a bola se deslocou menos de 22px nesta janela de tempo
+      if (displacement < 22) {
+        this.ballStuckTimer += dt;
+      } else {
+        this.ballStuckTimer = Math.max(0, this.ballStuckTimer - dt * 1.5);
+        this.ballStuckCheckX = ball.x;
+        this.ballStuckCheckY = ball.y;
+      }
+
+      // Condição de bola presa:
+      // Mais de 0.60s confinada OU mais de 5 micro-colisões com deslocamento nulo
+      const isStuck = (this.ballStuckTimer >= 0.60) || (this.consecutiveGoalHits >= 5 && this.ballStuckTimer >= 0.30);
+
+      if (isStuck && this.ballReleaseCooldown <= 0) {
+        this.releaseStuckBall(inLeftDanger ? 'left' : 'right');
+      }
+    } else {
+      // Bola jogada normalmente pelo campo
+      this.ballStuckTimer = 0;
+      this.ballStuckCheckX = ball.x;
+      this.ballStuckCheckY = ball.y;
+    }
+  }
+
+  private releaseStuckBall(side: 'left' | 'right') {
+    const ball = this.ball;
+    const isLeft = side === 'left';
+    const goal = isLeft ? this.goalLeft : this.goalRight;
+
+    // 1. Posição válida e segura dentro do campo jogável (à frente da linha de meta)
+    let targetX = isLeft ? goal.postX + 48 : goal.postX - 48; // ~158 ou ~1122
+    const targetY = goal.crossbarY - 32; // 358px (acima da trave, em posição arejada)
+
+    // 2. Não posiciona a bola dentro do corpo de um jogador
+    const obstaclePlayer = isLeft ? this.p1 : this.p2;
+    if (Math.abs(obstaclePlayer.x - targetX) < 48) {
+      targetX += isLeft ? 45 : -45;
+    }
+
+    // 3. Aplica coordenadas sem modificar o placar
+    ball.x = targetX;
+    ball.y = targetY;
+    ball.isSuper = false;
+
+    // 4. Velocidade dinâmica natural de rebote (arco em direção ao centro do campo)
+    const pushDir = isLeft ? 1 : -1;
+    ball.vx = pushDir * (230 + Math.random() * 40);
+    ball.vy = -180 - Math.random() * 30; // Arco que sobe e desce fluidamente pela gravidade
+    ball.angularVelocity = pushDir * 6;
+
+    // 5. Reinicia medições e concede breve imunidade contra reincidência
+    this.ballStuckTimer = 0;
+    this.consecutiveGoalHits = 0;
+    this.ballStuckCheckX = ball.x;
+    this.ballStuckCheckY = ball.y;
+    this.ballReleaseCooldown = 0.55;
+
+    // 6. Efeito audiovisual esportivo e feedback
+    sound.playPost();
+    this.renderer.triggerScreenShake(4);
+    this.particles.addTurfDust(ball.x, goal.crossbarY);
+    this.particles.showFloatingText(ball.x, ball.y - 25, '⚽ BOLA EM JOGO!', '#22c55e');
   }
 
   private handlePlayerBallCollision(p: Player) {
     const ball = this.ball;
     const head = p.getHeadPos();
 
-    // A) Colisão da Cabeça com a Bola (Cabeceio)
-    const dHeadSq = distSq(ball.x, ball.y, head.x, head.y);
-    const minHeadDist = head.radius + ball.radius;
+    // 1. CHUTE COM O PÉ (Prioridade máxima de ação voluntária)
+    // Se o jogador estiver em animação de chute e ainda não atingiu a bola neste movimento
+    if (p.isKicking && !p.hasHitBallThisKick) {
+      const isBallInStrikeZone = p.canStrikeBall(ball.x, ball.y, ball.radius);
 
-    if (dHeadSq < minHeadDist * minHeadDist) {
-      const d = Math.sqrt(dHeadSq);
-      const nx = (ball.x - head.x) / d;
-      const ny = (ball.y - head.y) / d;
+      if (isBallInStrikeZone) {
+        const foot = p.getFootPos();
+        const isSuper = p.canSuperKick() || (p.superMeter <= 0 && p.kickProgress < 0.5);
+        const charge = p.lastReleasedCharge; // 0.0 (toque rápido) a 1.0 (carga máxima)
 
-      // Afasta para fora
-      const overlap = minHeadDist - d;
-      ball.x += nx * overlap;
-      ball.y += ny * overlap;
+        // Potência do chute claramente superior a passes comuns (780 base rápida a 1040 carga total)
+        const basePower = 780 + charge * 260;
+        let kickPower = isSuper ? 1160 + charge * 120 : basePower;
 
-      // Impulso base de cabeceio calibrado
-      let forwardBoost = p.facing * 95;
-      let jumpBoost = p.vy < 0 ? -110 : 0;
-      let headerPower = 295;
-      let playerSpeedTransfer = p.vx * 0.32;
-
-      // Habilidade MURALHA (Cruz de Prata) / GALO DE AÇO (Atlético das Gerais)
-      if (p.team.ability?.id === 'muralha') {
-        forwardBoost = p.facing * 140;
-        jumpBoost = p.vy < 0 ? -150 : -25;
-        headerPower = 370;
-        playerSpeedTransfer = p.vx * 0.45;
-        this.particles.showFloatingText(head.x, head.y - 25, 'MURALHA AÉREA! 🛡️', '#cbd5e1');
-      } else if (p.team.ability?.id === 'galo_de_aco') {
-        forwardBoost = p.facing * 150;
-        jumpBoost = p.vy < 0 ? -160 : -30;
-        headerPower = 385;
-        playerSpeedTransfer = p.vx * 0.48;
-        this.particles.showFloatingText(head.x, head.y - 25, 'GALO DE AÇO! 🐓', '#facc15');
-      } else if (p.team.ability?.id === 'falcao') {
-        forwardBoost = p.facing * 115;
-        headerPower = 325;
-        playerSpeedTransfer = p.vx * 0.38;
-      }
-
-      ball.vx = nx * headerPower + forwardBoost + playerSpeedTransfer;
-      ball.vy = ny * headerPower + jumpBoost;
-      ball.angularVelocity = p.facing * 12;
-      ball.lastHitBy = p.id;
-
-      p.superMeter = Math.min(p.maxSuperMeter, p.superMeter + 10);
-      sound.playHeader();
-      this.particles.addKickSpark(ball.x, ball.y, '#ffffff', 8);
-
-      if (p.id === 'p1') {
-        this.stats.p1Headers++;
-        this.stats.p1Shots++;
-      } else {
-        this.stats.p2Headers++;
-        this.stats.p2Shots++;
-      }
-    }
-
-    // B) Chute com o Pé (durante a animação de chute com força acumulada)
-    if (p.isKicking && p.kickProgress > 0.1 && p.kickProgress < 0.85) {
-      const foot = p.getFootPos();
-      const footHitRadius = 40;
-      const dFootSq = distSq(ball.x, ball.y, foot.x, foot.y);
-
-      if (dFootSq < (footHitRadius + ball.radius) * (footHitRadius + ball.radius)) {
-        const isSuper = p.superMeter <= 0 && p.kickProgress < 0.5;
-        let kickAngle = (p.facing === 1 ? 0.65 : Math.PI - 0.65);
-
-        // Aplica a força acumulada (lastReleasedCharge de 0 a 1)
-        const charge = p.lastReleasedCharge;
-        const basePower = 520 + charge * 290;
-        let kickPower = isSuper ? 880 + charge * 120 : basePower;
-
-        // Habilidade CANHÃO (Rubro Imperial) / COLORADO (Internacional)
+        // Bônus de habilidades de chute
         if (p.team.ability?.id === 'canhao' || p.team.ability?.id === 'colorado') {
-          kickPower = isSuper ? 1000 : basePower * 1.20 + 50;
+          kickPower = isSuper ? 1280 : basePower * 1.18 + 40;
           this.particles.showFloatingText(foot.x, foot.y - 30, p.team.ability.id === 'canhao' ? 'CANHÃO! 💣' : 'COLORADO! 💥', '#dc2626');
         } else if (p.team.ability?.id === 'raio_solar' && charge > 0.35) {
-          kickPower = isSuper ? 1020 : basePower * 1.28 + 60;
+          kickPower = isSuper ? 1280 : basePower * 1.25 + 50;
           this.particles.showFloatingText(foot.x, foot.y - 30, 'RAIO SOLAR! ☀️', '#eab308');
         } else if (p.team.ability?.id === 'falcao') {
-          kickPower = isSuper ? 920 : basePower * 1.08 + 20;
+          kickPower = isSuper ? 1200 : basePower * 1.10 + 20;
         }
 
-        // Habilidade ESTRELA (Estrela Alvinegra) / CONSTELAÇÃO (Cruzeiro Celeste)
+        // Ângulo de chute: rápida sobe em arco expressivo (0.72 rad / ~41°), carregada afina em laser (0.54 rad / ~31°)
+        const dynamicElevation = 0.72 - charge * 0.18;
+        let kickAngle = (p.facing === 1 ? dynamicElevation : Math.PI - dynamicElevation);
+
+        // Habilidade ESTRELA / CONSTELAÇÃO (mira direcionada ao ângulo do gol)
         if (p.team.ability?.id === 'estrela' || p.team.ability?.id === 'constelacao') {
           const targetX = p.facing === 1 ? this.goalRight.postX : this.goalLeft.postX;
           const targetY = this.goalRight.crossbarY + 28;
@@ -718,29 +837,133 @@ export class GameEngine {
         }
 
         ball.applyKick(kickAngle, kickPower, isSuper, p.id);
+        p.hasHitBallThisKick = true;
+        p.kickedCooldownTimer = 0.22; // Impede que o próprio tronco anule o chute no mesmo frame
         p.superMeter = Math.min(p.maxSuperMeter, p.superMeter + 14);
 
+        // Feedback visual e sonoro vibrante
+        this.particles.addKickShockwave(foot.x, foot.y, p.facing, isSuper);
         const sparkColor = isSuper ? '#f97316' : (charge > 0.6 ? '#ef4444' : '#facc15');
-        this.particles.addKickSpark(foot.x, foot.y, sparkColor, isSuper ? 24 : Math.round(10 + charge * 10));
-        this.renderer.triggerScreenShake(isSuper ? 12 : 4 + charge * 5);
+        this.particles.addKickSpark(foot.x, foot.y, sparkColor, isSuper ? 24 : Math.round(12 + charge * 12));
+        if (ball.y >= this.groundY - 35) {
+          this.particles.addTurfDust(ball.x, this.groundY);
+        }
+        this.renderer.triggerScreenShake(isSuper ? 14 : 5 + charge * 6);
 
-        // Reseta carga após o impacto ser transmitido à bola
+        // Reseta carga aplicada
         p.lastReleasedCharge = 0;
 
         if (p.id === 'p1') {
           this.stats.p1Shots++;
           if (isSuper) {
             this.particles.showFloatingText(foot.x, foot.y - 30, 'SUPER CHUTE! 🔥', '#f97316');
-          } else if (charge > 0.8) {
+          } else if (charge > 0.75) {
             this.particles.showFloatingText(foot.x, foot.y - 25, 'BOMBA! ⚡', '#ef4444');
+          } else {
+            this.particles.showFloatingText(foot.x, foot.y - 25, 'CHUTE! ⚽', '#facc15');
           }
         } else {
           this.stats.p2Shots++;
+          if (isSuper) {
+            this.particles.showFloatingText(foot.x, foot.y - 30, 'SUPER CHUTE! 🔥', '#f97316');
+          } else if (charge > 0.75) {
+            this.particles.showFloatingText(foot.x, foot.y - 25, 'BOMBA IA! ⚡', '#f87171');
+          }
         }
+
+        // Interrompe processamento de colisão para o chutador neste ciclo
+        return;
       }
     }
 
-    // C) Contato do Tronco com a Bola (empurrão e domínio de bola)
+    // Se o jogador acabou de desferir um chute, seu próprio corpo não reabsorve a bola
+    if (ball.lastHitBy === p.id && p.kickedCooldownTimer > 0) {
+      return;
+    }
+
+    // 2. CABEÇA / CABECEIO (Defensivo ou Ofensivo)
+    const dHeadSq = distSq(ball.x, ball.y, head.x, head.y);
+    const minHeadDist = head.radius + ball.radius;
+
+    if (dHeadSq < minHeadDist * minHeadDist) {
+      const isOpponentShot = ball.isKicked && ball.lastHitBy !== p.id;
+      // Regra de elevação: Se o chute adversário está subindo alto por cima do topo da cabeça e o defensor NÃO pulou,
+      // a bola encobre o defensor legitimamente sem ser interceptada por magnetismo
+      const isBallSailingOver = ball.y + ball.radius * 0.4 < head.y && ball.vy < -80;
+
+      if (isOpponentShot && p.isGrounded && isBallSailingOver) {
+        // Bola encobre o defensor no chão, continua sua trajetória em direção ao gol
+      } else {
+        const d = Math.sqrt(dHeadSq);
+        const nx = (ball.x - head.x) / d;
+        const ny = (ball.y - head.y) / d;
+
+        // Afasta para fora da cabeça
+        const overlap = minHeadDist - d;
+        ball.x += nx * overlap;
+        ball.y += ny * overlap;
+
+        // Impulso base de cabeceio calibrado
+        let forwardBoost = p.facing * 110;
+        let jumpBoost = p.vy < 0 ? -130 : -20;
+        let headerPower = 320;
+        let playerSpeedTransfer = p.vx * 0.35;
+
+        // Habilidade MURALHA (Cruz de Prata) / GALO DE AÇO (Atlético das Gerais)
+        if (p.team.ability?.id === 'muralha') {
+          forwardBoost = p.facing * 160;
+          jumpBoost = p.vy < 0 ? -170 : -40;
+          headerPower = 390;
+          playerSpeedTransfer = p.vx * 0.45;
+          this.particles.showFloatingText(head.x, head.y - 25, 'MURALHA AÉREA! 🛡️', '#cbd5e1');
+        } else if (p.team.ability?.id === 'galo_de_aco') {
+          forwardBoost = p.facing * 170;
+          jumpBoost = p.vy < 0 ? -180 : -45;
+          headerPower = 405;
+          playerSpeedTransfer = p.vx * 0.48;
+          this.particles.showFloatingText(head.x, head.y - 25, 'GALO DE AÇO! 🐓', '#facc15');
+        } else if (p.team.ability?.id === 'falcao') {
+          forwardBoost = p.facing * 130;
+          headerPower = 345;
+          playerSpeedTransfer = p.vx * 0.38;
+        }
+
+        // Se foi um bloqueio de chute adversário com cabeceio, registra defesa/salvamento
+        if (isOpponentShot) {
+          ball.isKicked = false;
+          if (p.id === 'p1') {
+            this.stats.p1Saves++;
+            this.particles.showFloatingText(head.x, head.y - 25, 'DEFESA! 🧤', '#38bdf8');
+          } else {
+            this.stats.p2Saves++;
+            this.particles.showFloatingText(head.x, head.y - 25, 'BLOQUEIO! 🛡️', '#f87171');
+          }
+          this.particles.addBlockSparks(ball.x, ball.y);
+          this.renderer.triggerScreenShake(7);
+        }
+
+        ball.vx = nx * headerPower + forwardBoost + playerSpeedTransfer;
+        ball.vy = ny * headerPower + jumpBoost;
+        ball.angularVelocity = p.facing * 14;
+        ball.lastHitBy = p.id;
+
+        p.superMeter = Math.min(p.maxSuperMeter, p.superMeter + 10);
+        sound.playHeader();
+        this.particles.addKickSpark(ball.x, ball.y, '#ffffff', 8);
+
+        if (p.id === 'p1') {
+          this.stats.p1Headers++;
+          this.stats.p1Shots++;
+        } else {
+          this.stats.p2Headers++;
+          this.stats.p2Shots++;
+        }
+
+        return;
+      }
+    }
+
+    // 3. CONTATO DO TRONCO COM A BOLA (Empurrão, amortecimento ou bloqueio corporal)
     const bodyX = p.x;
     const bodyY = p.y - 25;
     const bodyRadius = 26;
@@ -752,13 +975,36 @@ export class GameEngine {
       const nx = (ball.x - bodyX) / d;
       const ny = (ball.y - bodyY) / d;
 
-      // Habilidade MAESTRO / ESQUADRÃO: amortece a bola para os pés suavemente
+      const isOpponentShot = ball.isKicked && ball.lastHitBy !== p.id;
+
+      // Bloqueio de chute potente com o peito/tronco: rebote elástico defensivo
+      if (isOpponentShot) {
+        ball.x = bodyX + nx * minBodyDist;
+        ball.y = bodyY + ny * minBodyDist;
+        ball.vx = -ball.vx * 0.45 + p.vx * 0.4;
+        ball.vy = -Math.abs(ball.vy) * 0.35 - 120;
+        ball.isKicked = false;
+        ball.lastHitBy = p.id;
+
+        if (p.id === 'p1') {
+          this.stats.p1Saves++;
+          this.particles.showFloatingText(p.x, p.y - 35, 'DEFESA! 🧤', '#38bdf8');
+        } else {
+          this.stats.p2Saves++;
+          this.particles.showFloatingText(p.x, p.y - 35, 'BLOQUEIO! 🛡️', '#f87171');
+        }
+        this.particles.addBlockSparks(ball.x, ball.y);
+        sound.playKick(0.6);
+        return;
+      }
+
+      // Habilidade MAESTRO / ESQUADRÃO: amortece a bola suavemente para os pés
       const isBallMaster = p.team.ability?.id === 'maestro' || p.team.ability?.id === 'esquadrao';
       if (isBallMaster && !p.isKicking) {
         ball.x = bodyX + nx * minBodyDist;
         ball.y = bodyY + ny * minBodyDist;
-        ball.vx = p.facing * 75 + p.vx * 0.2;
-        ball.vy = Math.min(ball.vy * 0.25, 25);
+        ball.vx = p.facing * 85 + p.vx * 0.2;
+        ball.vy = Math.min(ball.vy * 0.25, 20);
         ball.lastHitBy = p.id;
         this.particles.showFloatingText(
           p.x,
@@ -769,8 +1015,8 @@ export class GameEngine {
       } else {
         ball.x = bodyX + nx * minBodyDist;
         ball.y = bodyY + ny * minBodyDist;
-        ball.vx = nx * 220 + p.vx * 0.8;
-        ball.vy = ny * 180;
+        ball.vx = nx * 240 + p.vx * 0.8;
+        ball.vy = ny * 160;
         ball.lastHitBy = p.id;
       }
     }
@@ -834,6 +1080,14 @@ export class GameEngine {
     // Ativa a fase de disputa temporariamente congelada
     this.isKickoffDropPhase = true;
     this.kickoffSafetyTimer = 3.5; // Limite máximo de segurança caso a bola não toque o solo
+
+    // Reinicia rastreadores de monitoramento de bola presa
+    this.ballStuckTimer = 0;
+    this.ballStuckCheckX = 640;
+    this.ballStuckCheckY = 220;
+    this.consecutiveGoalHits = 0;
+    this.goalHitWindowTimer = 0;
+    this.ballReleaseCooldown = 0;
   }
 
   private finishMatch() {

@@ -67,8 +67,8 @@ export function resolveCircleSegmentCollision(
     const nx = dX / d;
     const ny = dY / d;
 
-    // Afasta o círculo para fora da penetração
-    const overlap = minDist - d;
+    // Afasta o círculo para fora da penetração com separação positiva garantida
+    const overlap = minDist - d + 0.1;
     circle.x += nx * overlap;
     circle.y += ny * overlap;
 

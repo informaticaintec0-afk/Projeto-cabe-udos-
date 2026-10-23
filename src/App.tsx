@@ -3,21 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  * 
  * Jogo de Futebol Arcade 2D "Futebol Retrô"
- * Versão 1v1 com os Oito Clubes Fictícios Oficiais para Android e Navegador Web.
+ * Versão 1v1 com os 20 Clubes Brasileiros Oficiais para Android e Navegador Web.
  * 
- * Instruções para Executar e Testar:
- * 1. O jogo executa diretamente no navegador ou tela de celular (modo paisagem recomendado).
- * 2. Na tela inicial ou de seleção, escolha seu time e o adversário entre os 8 clubes oficiais.
- * 3. No celular: use os botões táteis na tela (◄, ►, ⬆ PULO, ⚽ CHUTE, 🔥 SUPER).
- * 4. No computador: use as setas do teclado ou W/A/S/D para mover/pular e Barra de Espaço/X para chutar.
- * 
- * Instruções para Conversão em Aplicativo Android Offline:
- * - O projeto utiliza HTML5 Canvas puro e Web Audio API, sem bibliotecas externas e sem chamadas de rede.
- * - Para empacotar com Capacitor:
- *     npm install @capacitor/core @capacitor/cli @capacitor/android
- *     npx cap init "Futebol Retro Arcade" "com.futebolretro.arcade"
- *     npm run build
- *     npx cap add android && npx cap copy && npx cap open android
+ * Fluxo dos Menus:
+ * 1. Menu Principal (4 botões: Partida Rápida, Liga Nacional, Copa Nacional, Configurações)
+ * 2. Seleção de País (Cartão com a Bandeira do Brasil)
+ * 3. Escolha da Minha Equipe (20 Clubes Brasileiros)
+ * 4. Escolha da Equipe Adversária (IA, impedindo mesmo clube)
+ * 5. Partida 1v1
+ * 6. Fim de Jogo (Revanche, Voltar à Seleção de Times, Voltar ao Menu)
  */
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
@@ -28,7 +22,12 @@ import { sound } from './game/audio';
 import { ScoreBoard } from './components/ScoreBoard';
 import { TouchControls } from './components/TouchControls';
 import { TitleScreen } from './components/TitleScreen';
-import { ClubSelectionScreen } from './components/ClubSelectionScreen';
+import { CountrySelectionScreen } from './components/CountrySelectionScreen';
+import { MyTeamSelectionScreen } from './components/MyTeamSelectionScreen';
+import { OpponentSelectionScreen } from './components/OpponentSelectionScreen';
+import { NationalLeagueScreen } from './components/NationalLeagueScreen';
+import { NationalCupScreen } from './components/NationalCupScreen';
+import { SettingsScreen } from './components/SettingsScreen';
 import { GameOverModal } from './components/GameOverModal';
 import { PauseModal } from './components/PauseModal';
 import { MatchBanners } from './components/MatchBanners';
@@ -55,7 +54,7 @@ export default function App() {
   const [difficulty, setDifficulty] = useState<AIDifficulty>('medio');
   const [matchDuration, setMatchDuration] = useState<number>(90);
 
-  // Vencedor e estatísticas finais
+  // Vencedor e estatísticas finais da partida
   const [matchResult, setMatchResult] = useState<{
     winner: 'p1' | 'p2' | 'draw';
     stats: MatchStats;
@@ -103,7 +102,7 @@ export default function App() {
       setMatchResult({ winner, stats });
     };
 
-    // Inicia o render loop imediatamente para desenhar o cenário de fundo
+    // Inicia o render loop imediatamente
     engine.startLoop();
 
     return () => {
@@ -111,7 +110,7 @@ export default function App() {
     };
   }, []);
 
-  // Atualiza temporizador de contagem regressiva na tela
+  // Atualiza temporizador de contagem regressiva
   useEffect(() => {
     if (gameState === 'COUNTDOWN') {
       const interval = setInterval(() => {
@@ -123,9 +122,9 @@ export default function App() {
     }
   }, [gameState]);
 
-  // Iniciar partida confirmada a partir da seleção de clubes
+  // Iniciar partida com as equipes confirmadas
   const handleConfirmAndPlay = useCallback(
-    (chosenP1: TeamPreset, chosenP2: TeamPreset, diff: AIDifficulty, duration: number) => {
+    (chosenP1: TeamPreset, chosenP2: TeamPreset, diff: AIDifficulty = difficulty, duration: number = matchDuration) => {
       setP1Team(chosenP1);
       setP2Team(chosenP2);
       setDifficulty(diff);
@@ -139,10 +138,10 @@ export default function App() {
         engineRef.current.startMatch();
       }
     },
-    []
+    [difficulty, matchDuration]
   );
 
-  // Reiniciar partida (Revanche)
+  // Reiniciar partida (Revanche direta)
   const handlePlayAgain = useCallback(() => {
     setMatchResult(null);
     if (engineRef.current) {
@@ -150,17 +149,17 @@ export default function App() {
     }
   }, []);
 
-  // Voltar para a tela de Seleção de Clubes
+  // Voltar para a Seleção de Times (mantém os times pré-selecionados)
   const handleGoToSelection = useCallback(() => {
     setMatchResult(null);
-    setGameState('SELECT_TEAMS');
+    setGameState('SELECT_MY_TEAM');
     if (engineRef.current) {
       engineRef.current.state = 'MENU';
       engineRef.current.resetPositionsForKickoff();
     }
   }, []);
 
-  // Voltar ao menu principal
+  // Voltar ao Menu Principal
   const handleGoToMenu = useCallback(() => {
     setMatchResult(null);
     setGameState('MENU');
@@ -191,7 +190,7 @@ export default function App() {
       {/* Aviso de orientação para tela em pé no celular */}
       <OrientationNotice />
 
-      {/* Container responsivo do Canvas (proporção 16:9 arcade adaptada para mobile e desktop) */}
+      {/* Container responsivo do Canvas (16:9 arcade adaptada para mobile e desktop) */}
       <div className="relative w-full h-full flex items-center justify-center p-0 m-0 overflow-hidden">
         <canvas
           ref={canvasRef}
@@ -203,33 +202,91 @@ export default function App() {
           }}
         />
 
-        {/* 1. Tela Inicial */}
+        {/* 1. TELA: MENU PRINCIPAL (4 Botões Grandes Empilhados) */}
         {gameState === 'MENU' && (
           <TitleScreen
-            p1Team={p1Team}
-            p2Team={p2Team}
-            onOpenClubSelection={() => setGameState('SELECT_TEAMS')}
-            onStartDirectGame={handleConfirmAndPlay}
+            onStartQuickMatch={() => setGameState('SELECT_COUNTRY')}
+            onOpenNationalLeague={() => setGameState('LIGA_NACIONAL')}
+            onOpenNationalCup={() => setGameState('COPA_NACIONAL')}
+            onOpenSettings={() => setGameState('CONFIGURACOES')}
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
+            p1Team={p1Team}
+            p2Team={p2Team}
           />
         )}
 
-        {/* 2. Tela Dedicada de Seleção dos 8 Clubes */}
-        {gameState === 'SELECT_TEAMS' && (
-          <ClubSelectionScreen
-            initialP1Team={p1Team}
-            initialP2Team={p2Team}
-            initialDifficulty={difficulty}
-            initialDuration={matchDuration}
+        {/* 2. TELA: SELEÇÃO DE PAÍS (Partida Rápida -> Bandeira do Brasil) */}
+        {gameState === 'SELECT_COUNTRY' && (
+          <CountrySelectionScreen
+            onSelectBrazil={() => setGameState('SELECT_MY_TEAM')}
+            onBack={() => setGameState('MENU')}
+          />
+        )}
+
+        {/* 3. TELA: ESCOLHA DA MINHA EQUIPE (20 Clubes Brasileiros) */}
+        {(gameState === 'SELECT_MY_TEAM' || gameState === 'SELECT_TEAMS') && (
+          <MyTeamSelectionScreen
+            selectedTeam={p1Team}
+            onSelectTeam={(team) => {
+              setP1Team(team);
+              // Se o adversário for igual ao time escolhido, troca para o próximo disponível
+              if (p2Team.id === team.id) {
+                const other = DEFAULT_P1_TEAM.id === team.id ? DEFAULT_P2_TEAM : DEFAULT_P1_TEAM;
+                setP2Team(other);
+              }
+            }}
+            onContinue={(team) => {
+              setP1Team(team);
+              setGameState('SELECT_OPPONENT');
+            }}
+            onBack={() => setGameState('SELECT_COUNTRY')}
+          />
+        )}
+
+        {/* 4. TELA: ESCOLHA DA EQUIPE ADVERSÁRIA (Impedindo o mesmo clube) */}
+        {gameState === 'SELECT_OPPONENT' && (
+          <OpponentSelectionScreen
+            myTeam={p1Team}
+            initialOpponent={p2Team.id === p1Team.id ? DEFAULT_P2_TEAM : p2Team}
+            onSelectOpponent={(opp) => setP2Team(opp)}
+            onConfirmAndStartMatch={(my, opp) => {
+              handleConfirmAndPlay(my, opp, difficulty, matchDuration);
+            }}
+            onBack={() => setGameState('SELECT_MY_TEAM')}
+          />
+        )}
+
+        {/* 5. TELA: LIGA NACIONAL */}
+        {gameState === 'LIGA_NACIONAL' && (
+          <NationalLeagueScreen
+            onStartQuickMatch={() => setGameState('SELECT_COUNTRY')}
+            onBack={() => setGameState('MENU')}
+          />
+        )}
+
+        {/* 6. TELA: COPA NACIONAL */}
+        {gameState === 'COPA_NACIONAL' && (
+          <NationalCupScreen
+            onStartQuickMatch={() => setGameState('SELECT_COUNTRY')}
+            onBack={() => setGameState('MENU')}
+          />
+        )}
+
+        {/* 7. TELA: CONFIGURAÇÕES */}
+        {gameState === 'CONFIGURACOES' && (
+          <SettingsScreen
+            difficulty={difficulty}
+            onChangeDifficulty={setDifficulty}
+            matchDuration={matchDuration}
+            onChangeMatchDuration={setMatchDuration}
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
             onBack={() => setGameState('MENU')}
-            onConfirmPlay={handleConfirmAndPlay}
           />
         )}
 
-        {/* 3. Interface durante a Partida */}
+        {/* 8. INTERFACE DURANTE A PARTIDA REAL */}
         {(gameState === 'PLAYING' ||
           gameState === 'COUNTDOWN' ||
           gameState === 'GOAL_CELEBRATION' ||
@@ -256,7 +313,7 @@ export default function App() {
               goalText={goalText}
             />
 
-            {/* Controles Táteis na Tela para Celular */}
+            {/* Controles Táteis Virtuais */}
             <TouchControls
               engine={engineRef.current}
               superMeter={superMeter}
@@ -264,16 +321,16 @@ export default function App() {
           </>
         )}
 
-        {/* 4. Modal de Pausa */}
+        {/* 9. MODAL DE PAUSA */}
         {gameState === 'PAUSED' && (
           <PauseModal
             onResume={handleTogglePause}
             onRestart={handlePlayAgain}
-            onGoToMenu={handleGoToSelection}
+            onGoToMenu={handleGoToMenu}
           />
         )}
 
-        {/* 5. Modal de Fim de Jogo */}
+        {/* 10. MODAL DE FIM DE JOGO */}
         {gameState === 'GAME_OVER' && matchResult && (
           <GameOverModal
             winner={matchResult.winner}
@@ -281,7 +338,8 @@ export default function App() {
             p1Team={p1Team}
             p2Team={p2Team}
             onPlayAgain={handlePlayAgain}
-            onGoToMenu={handleGoToSelection}
+            onGoToSelection={handleGoToSelection}
+            onGoToMenu={handleGoToMenu}
           />
         )}
       </div>

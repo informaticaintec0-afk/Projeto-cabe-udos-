@@ -5,6 +5,12 @@
 
 export type GameState =
   | 'MENU'
+  | 'SELECT_COUNTRY'
+  | 'SELECT_MY_TEAM'
+  | 'SELECT_OPPONENT'
+  | 'LIGA_NACIONAL'
+  | 'COPA_NACIONAL'
+  | 'CONFIGURACOES'
   | 'SELECT_TEAMS'
   | 'COUNTDOWN'
   | 'PLAYING'
@@ -128,7 +134,7 @@ export interface Particle {
   alpha: number;
   life: number;
   maxLife: number;
-  shape?: 'circle' | 'square' | 'spark' | 'smoke';
+  shape?: 'circle' | 'square' | 'spark' | 'smoke' | 'shockwave' | 'ring';
   rotation?: number;
   rotationSpeed?: number;
 }
