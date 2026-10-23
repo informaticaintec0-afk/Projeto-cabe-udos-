@@ -1,0 +1,8 @@
+{
+  "name": "Remix Cabeçudos Futebol Arcade 2D",
+  "description": "Futebol Retrô 2D com 8 clubes fictícios, escudos originais, uniformes autênticos, habilidades especiais balanceadas e controles para Android.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
