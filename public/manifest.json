@@ -1,0 +1,13 @@
+
+{
+  "id": "/Projeto-cabe-udos-/",
+  "name": "Futebol Retrô",
+  "short_name": "Futebol Retrô",
+  "description": "Jogo de futebol retrô para Android",
+  "start_url": "/Projeto-cabe-udos-/",
+  "scope": "/Projeto-cabe-udos-/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#111111",
+  "theme_color": "#111111"
+}
