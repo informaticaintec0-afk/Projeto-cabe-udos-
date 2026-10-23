@@ -187,9 +187,10 @@ export class Player {
   public cheerTimer: number = 0;
   public jumpCooldown: number = 0;
 
-  // Limites de movimentação
+  // Limites territoriais de movimentação (quadra e linha de meio-campo)
   public minX: number = 80;
   public maxX: number = 1200;
+  public side: 'left' | 'right' = 'left';
 
   public isAwayKit: boolean = false;
 
@@ -201,6 +202,37 @@ export class Player {
     this.facing = facing;
     this.isAwayKit = isAwayKit;
     this.applyTeamAttributes();
+  }
+
+  /**
+   * Define a metade do campo permitida para este jogador ('left' ou 'right').
+   * Aplica a margem correspondente ao raio da cabeça (42px) para assegurar
+   * que nenhuma parte do corpo ultrapasse a linha central de 640px.
+   */
+  public setFieldHalf(
+    side: 'left' | 'right',
+    midX: number = 640,
+    leftGoalX: number = 110,
+    rightGoalX: number = 1170
+  ) {
+    this.side = side;
+    const bodyMargin = this.headRadius; // 42px
+    if (side === 'left') {
+      this.minX = leftGoalX + 10;
+      this.maxX = midX - bodyMargin;
+    } else {
+      this.minX = midX + bodyMargin;
+      this.maxX = rightGoalX - 10;
+    }
+
+    // Garante que o jogador fique imediatamente dentro da sua metade permitida sem solavancos
+    if (this.x < this.minX) {
+      this.x = this.minX;
+      if (this.vx < 0) this.vx = 0;
+    } else if (this.x > this.maxX) {
+      this.x = this.maxX;
+      if (this.vx > 0) this.vx = 0;
+    }
   }
 
   public setTeam(team: TeamPreset, isAwayKit: boolean = false) {
@@ -309,8 +341,14 @@ export class Player {
       this.isGrounded = false;
     }
 
-    // Restrições de borda da quadra
-    this.x = clamp(this.x, this.minX, this.maxX);
+    // Restrições de borda da quadra e limite da linha de meio-campo
+    if (this.x <= this.minX) {
+      this.x = this.minX;
+      if (this.vx < 0) this.vx = 0;
+    } else if (this.x >= this.maxX) {
+      this.x = this.maxX;
+      if (this.vx > 0) this.vx = 0;
+    }
 
     // Atualização da animação do chute
     if (this.isKicking) {
@@ -366,6 +404,16 @@ export class Player {
   }
 
   public move(dir: number) {
+    // Impede movimentação contra o limite do meio-campo ou extremidades do campo
+    if (dir > 0 && this.x >= this.maxX) {
+      this.vx = 0;
+      return;
+    }
+    if (dir < 0 && this.x <= this.minX) {
+      this.vx = 0;
+      return;
+    }
+
     // Velocidade máxima configurada pela habilidade especial
     let moveSpeed = 360;
 

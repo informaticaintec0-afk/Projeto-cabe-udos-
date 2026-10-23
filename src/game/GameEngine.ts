@@ -120,19 +120,34 @@ export class GameEngine {
     this.p1 = new Player('p1', p1Team, 360, 1);
     this.p2 = new Player('p2', p2Team, 920, -1);
 
-    // Limites de locomoção dos jogadores (não podem entrar além da linha de gol)
-    this.p1.minX = 120;
-    this.p1.maxX = 1160;
-    this.p2.minX = 120;
-    this.p2.maxX = 1160;
-
     this.goalLeft = new Goal(true);
     this.goalRight = new Goal(false);
     this.particles = new ParticleSystem();
     this.ai = new SoccerAI(difficulty);
 
+    // Configura os limites territoriais de cada equipe respeitando a linha central de 640px
+    this.setupTeamFieldHalves('left', 'right');
+
     this.setupKeyboardListeners();
     this.handleResize();
+  }
+
+  /**
+   * Configura os limites territoriais da metade do campo para cada equipe.
+   * Identifica dinamicamente qual metade pertence a cada jogador ('left' ou 'right')
+   * e define minX e maxX para garantir que nenhum jogador invada o lado adversário,
+   * mesmo se os times trocarem de lado ou a orientação mudar.
+   */
+  public setupTeamFieldHalves(
+    p1Side: 'left' | 'right' = (this.p1 ? this.p1.side : 'left'),
+    p2Side: 'left' | 'right' = (p1Side === 'left' ? 'right' : 'left')
+  ) {
+    const midX = this.virtualWidth / 2; // 640px
+    const leftGoalX = this.goalLeft ? this.goalLeft.postX : 110;
+    const rightGoalX = this.goalRight ? this.goalRight.postX : 1170;
+
+    this.p1.setFieldHalf(p1Side, midX, leftGoalX, rightGoalX);
+    this.p2.setFieldHalf(p2Side, midX, leftGoalX, rightGoalX);
   }
 
   public setTeams(p1Team: TeamPreset, p2Team: TeamPreset) {
@@ -559,8 +574,9 @@ export class GameEngine {
     if (Math.abs(dxPlayers) < minPlayerDist) {
       const overlap = (minPlayerDist - Math.abs(dxPlayers));
       const totalMass = p1.mass + p2.mass;
-      p1.x -= (p2.mass / totalMass) * overlap;
-      p2.x += (p1.mass / totalMass) * overlap;
+      const sign = dxPlayers >= 0 ? 1 : -1;
+      p1.x -= sign * (p2.mass / totalMass) * overlap;
+      p2.x += sign * (p1.mass / totalMass) * overlap;
 
       // Habilidade FORTALEZA / MURALHA VERDE / IMORTALIDADE: estabilidade máxima na dividida
       const isTank1 = ['fortaleza', 'muralha_verde', 'imortalidade'].includes(p1.team.ability?.id || '');
@@ -570,6 +586,23 @@ export class GameEngine {
 
       p1.vx *= isFastRec1 ? 0.9 : (isTank1 ? 0.82 : 0.5);
       p2.vx *= isFastRec2 ? 0.9 : (isTank2 ? 0.82 : 0.5);
+    }
+
+    // Garante que colisões físicas nunca empurrem nenhum jogador para além do meio-campo
+    if (p1.x < p1.minX) {
+      p1.x = p1.minX;
+      if (p1.vx < 0) p1.vx = 0;
+    } else if (p1.x > p1.maxX) {
+      p1.x = p1.maxX;
+      if (p1.vx > 0) p1.vx = 0;
+    }
+
+    if (p2.x < p2.minX) {
+      p2.x = p2.minX;
+      if (p2.vx < 0) p2.vx = 0;
+    } else if (p2.x > p2.maxX) {
+      p2.x = p2.maxX;
+      if (p2.vx > 0) p2.vx = 0;
     }
 
     // 2. Colisão Bola com as Traves e Travessão
@@ -1023,8 +1056,12 @@ export class GameEngine {
   }
 
   private checkGoals() {
-    // 1. Gol do Jogador 1 (bola entra no gol direito do adversário)
-    if (this.goalRight.checkGoal(this.ball)) {
+    // Identifica dinamicamente a meta atacada por cada equipe
+    const p1TargetGoal = this.p1.side === 'left' ? this.goalRight : this.goalLeft;
+    const p2TargetGoal = this.p2.side === 'left' ? this.goalRight : this.goalLeft;
+
+    // 1. Gol do Jogador 1 (bola entra no gol atacado pelo P1)
+    if (p1TargetGoal.checkGoal(this.ball)) {
       this.stats.p1Goals++;
       this.lastScorer = 'p1';
       this.onScoreChange?.(this.stats.p1Goals, this.stats.p2Goals);
@@ -1032,8 +1069,8 @@ export class GameEngine {
       return;
     }
 
-    // 2. Gol do Jogador 2 / Adversário (bola entra no gol esquerdo do P1)
-    if (this.goalLeft.checkGoal(this.ball)) {
+    // 2. Gol do Jogador 2 / Adversário (bola entra no gol atacado pelo P2)
+    if (p2TargetGoal.checkGoal(this.ball)) {
       this.stats.p2Goals++;
       this.lastScorer = 'p2';
       this.onScoreChange?.(this.stats.p1Goals, this.stats.p2Goals);
@@ -1050,7 +1087,9 @@ export class GameEngine {
     sound.playWhistle(true);
     this.renderer.triggerScreenShake(14);
 
-    const goalX = scorer === 'p1' ? this.goalRight.postX : this.goalLeft.postX;
+    const p1TargetGoal = this.p1.side === 'left' ? this.goalRight : this.goalLeft;
+    const p2TargetGoal = this.p2.side === 'left' ? this.goalRight : this.goalLeft;
+    const goalX = scorer === 'p1' ? p1TargetGoal.postX : p2TargetGoal.postX;
     this.particles.addConfettiBurst(goalX, 480, 90);
 
     const scorerPlayer = scorer === 'p1' ? this.p1 : this.p2;
@@ -1071,11 +1110,18 @@ export class GameEngine {
     this.onStateChange?.(this.state);
   }
 
-  public resetPositionsForKickoff() {
+  public resetPositionsForKickoff(p1Side: 'left' | 'right' = this.p1 ? this.p1.side : 'left') {
+    const p2Side: 'left' | 'right' = p1Side === 'left' ? 'right' : 'left';
+    const startP1X = p1Side === 'left' ? 360 : 920;
+    const startP2X = p2Side === 'left' ? 360 : 920;
+    const facingP1: 1 | -1 = p1Side === 'left' ? 1 : -1;
+    const facingP2: 1 | -1 = p2Side === 'left' ? 1 : -1;
+
     // Bola é colocada no alto descendo em direção ao campo
     this.ball.reset(640, 220, 80);
-    this.p1.reset(360, 1);
-    this.p2.reset(920, -1);
+    this.p1.reset(startP1X, facingP1);
+    this.p2.reset(startP2X, facingP2);
+    this.setupTeamFieldHalves(p1Side, p2Side);
 
     // Ativa a fase de disputa temporariamente congelada
     this.isKickoffDropPhase = true;
