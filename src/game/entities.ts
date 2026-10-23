@@ -186,9 +186,11 @@ export class Player {
   }
 
   private applyTeamAttributes() {
-    // Ajusta massa baseada na habilidade Fortaleza ou Falcão
-    if (this.team.ability?.id === 'fortaleza') {
+    // Ajusta massa baseada na habilidade
+    if (this.team.ability?.id === 'fortaleza' || this.team.ability?.id === 'muralha_verde') {
       this.mass = 16.5; // Mais pesado e estável em disputas
+    } else if (this.team.ability?.id === 'imortalidade') {
+      this.mass = 15.8; // Estabilidade pós-dividida
     } else if (this.team.ability?.id === 'falcao') {
       this.mass = 13.0; // Leve bônus equilibrado
     } else {
@@ -265,7 +267,7 @@ export class Player {
       if (this.kickProgress >= 1.0) {
         this.isKicking = false;
         this.kickProgress = 0;
-        this.kickCooldown = 0.12;
+        this.kickCooldown = this.team.ability?.id === 'esquadrao' ? 0.08 : 0.12;
       }
     }
     if (this.kickCooldown > 0) {
@@ -275,8 +277,8 @@ export class Player {
       this.jumpCooldown -= dt;
     }
 
-    // Carregamento passivo do super medidor (+1 por segundo; Falcão ganha +10% de recarga)
-    const meterRate = this.team.ability?.id === 'falcao' ? 1.65 : 1.5;
+    // Carregamento passivo do super medidor (+1 por segundo; Falcão/Esquadrão ganham recarga acelerada)
+    const meterRate = (this.team.ability?.id === 'falcao' || this.team.ability?.id === 'esquadrao') ? 1.65 : 1.5;
     this.superMeter = Math.min(this.maxSuperMeter, this.superMeter + dt * meterRate);
 
     // Atualização do Chute Carregado
@@ -314,6 +316,10 @@ export class Player {
 
     if (this.team.ability?.id === 'raio_azul') {
       moveSpeed = 415; // +15% de velocidade máxima (Raio Azul)
+    } else if (this.team.ability?.id === 'mare_azul') {
+      moveSpeed = 420; // +16% de velocidade máxima (Maré Azul)
+    } else if (this.team.ability?.id === 'vendaval' || this.team.ability?.id === 'turbina') {
+      moveSpeed = 412; // Alta velocidade com pico explosivo
     } else if (this.team.ability?.id === 'falcao') {
       moveSpeed = 380; // Bônus equilibrado Falcão
     }
@@ -323,9 +329,10 @@ export class Player {
       moveSpeed *= 0.85;
     }
 
-    // Fúria: aceleração inicial rápida instantânea
-    if (this.team.ability?.id === 'furia' && Math.abs(this.vx) < 50) {
-      this.vx = dir * moveSpeed * 0.95;
+    // Fúria / Fúria Rubra / Vendaval / Turbina: aceleração explosiva inicial
+    const hasBurst = ['furia', 'furia_rubra', 'vendaval', 'turbina'].includes(this.team.ability?.id || '');
+    if (hasBurst && Math.abs(this.vx) < 60) {
+      this.vx = dir * moveSpeed * 0.96;
     } else {
       this.vx = dir * moveSpeed;
     }
@@ -333,8 +340,9 @@ export class Player {
 
   public jump() {
     if (this.isGrounded && this.jumpCooldown <= 0) {
-      // Pulo com ligeiro bônus se for Muralha
-      const jumpImpulse = this.team.ability?.id === 'muralha' ? -660 : -640;
+      // Pulo com bônus se for Muralha ou Galo de Aço
+      const isAerial = this.team.ability?.id === 'muralha' || this.team.ability?.id === 'galo_de_aco';
+      const jumpImpulse = isAerial ? -665 : -640;
       this.vy = jumpImpulse;
       this.isGrounded = false;
       this.jumpCooldown = 0.15;

@@ -22,7 +22,20 @@ export type ClubAbilityId =
   | 'falcao'
   | 'fortaleza'
   | 'furia'
-  | 'raio_azul';
+  | 'raio_azul'
+  // 12 Novos Clubes Brasileiros
+  | 'constelacao'
+  | 'vendaval'
+  | 'muralha_verde'
+  | 'esperanca'
+  | 'mare_azul'
+  | 'raio_solar'
+  | 'esquadrao'
+  | 'imortalidade'
+  | 'colorado'
+  | 'galo_de_aco'
+  | 'turbina'
+  | 'furia_rubra';
 
 export interface ClubAbility {
   id: ClubAbilityId;
@@ -39,7 +52,20 @@ export type JerseyStyle =
   | 'geometric-blocks'
   | 'emerald-gold'
   | 'striped-black-white'
-  | 'white-clean';
+  | 'white-clean'
+  // Novos estilos
+  | 'celeste-stars'
+  | 'tornado-red-black'
+  | 'green-white-hoops'
+  | 'emerald-hope'
+  | 'navy-sky-lion'
+  | 'sun-gold-green'
+  | 'tricolor-bahia'
+  | 'tricolor-pampas'
+  | 'colorado-red'
+  | 'striped-black-white-galo'
+  | 'braganca-turbine'
+  | 'vitoria-furia';
 
 export interface TeamPreset {
   id: string;
@@ -58,6 +84,19 @@ export interface TeamPreset {
   headwear?: 'headband' | 'none';
   jerseyStyle: JerseyStyle;
   ability: ClubAbility;
+}
+
+export type CompetitionType = 'friendly' | 'brasileirao' | 'copa_brasil';
+
+export interface GoldenGoalContext {
+  isGoldenGoal: boolean;
+  period: number; // 1, 2, 3...
+  periodDuration: number; // 120s
+  periodTimeLeft: number;
+  aggP1: number;
+  aggP2: number;
+  leg1P1Goals: number;
+  leg1P2Goals: number;
 }
 
 export interface InputState {

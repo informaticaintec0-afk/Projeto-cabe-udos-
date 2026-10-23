@@ -66,6 +66,18 @@ export class GameEngine {
   public onSuperMeterChange?: (meterP1: number) => void;
   public onGoalScored?: (scorer: 'p1' | 'p2', text: string) => void;
   public onMatchEnd?: (winner: 'p1' | 'p2' | 'draw', stats: MatchStats) => void;
+  public onGoldenGoalTick?: (period: number, secondsLeft: number) => void;
+  public onGoldenGoalPeriodChange?: (period: number) => void;
+
+  // Estado Universal de Gol de Ouro (Copa do Brasil e futuras Copas Internacionais)
+  public isGoldenGoalActive: boolean = false;
+  public goldenGoalPeriod: number = 1;
+  public goldenGoalPeriodDuration: number = 120; // 2 minutos (120 segundos)
+  public goldenGoalTimeLeft: number = 120;
+  public aggOffsetP1: number = 0; // Gols do time 1 em partidas anteriores (ida)
+  public aggOffsetP2: number = 0; // Gols do time 2 em partidas anteriores (ida)
+  public isCupMatch: boolean = false;
+  public cupLeg: 1 | 2 = 1;
 
   // Loop de animação
   private animationFrameId: number | null = null;
@@ -130,6 +142,11 @@ export class GameEngine {
   }
 
   public startMatch() {
+    this.isGoldenGoalActive = false;
+    this.goldenGoalPeriod = 1;
+    this.goldenGoalTimeLeft = this.goldenGoalPeriodDuration;
+    this.aggOffsetP1 = 0;
+    this.aggOffsetP2 = 0;
     this.matchTime = this.matchDuration;
     this.stats = {
       p1Goals: 0,
@@ -152,8 +169,72 @@ export class GameEngine {
     this.onTimeChange?.(Math.ceil(this.matchTime));
   }
 
+  /**
+   * Inicia ou retoma a prorrogação de Gol de Ouro (Copa do Brasil / Copas Internacionais)
+   * Respeita período atual, cronômetro regressivo de 2 minutos (120s) e placar agregado.
+   */
+  public startGoldenGoalMatch(
+    chosenP1: TeamPreset,
+    chosenP2: TeamPreset,
+    diff: AIDifficulty,
+    period: number = 1,
+    timeLeft: number = 120,
+    aggOffsetP1: number = 0,
+    aggOffsetP2: number = 0,
+    currentLegP1: number = 0,
+    currentLegP2: number = 0
+  ) {
+    this.setTeams(chosenP1, chosenP2);
+    this.setDifficulty(diff);
+    this.isGoldenGoalActive = true;
+    this.goldenGoalPeriod = Math.max(1, period);
+    this.goldenGoalPeriodDuration = 120;
+    this.goldenGoalTimeLeft = Math.max(1, timeLeft);
+    this.matchTime = this.goldenGoalTimeLeft;
+    this.aggOffsetP1 = aggOffsetP1;
+    this.aggOffsetP2 = aggOffsetP2;
+
+    this.stats = {
+      p1Goals: currentLegP1,
+      p2Goals: currentLegP2,
+      p1Shots: 0,
+      p2Shots: 0,
+      p1Headers: 0,
+      p2Headers: 0,
+      p1Saves: 0,
+      p2Saves: 0
+    };
+    this.lastScorer = null;
+    this.resetPositionsForKickoff();
+    this.state = 'COUNTDOWN';
+    this.countdownTimer = 3;
+    sound.playCountdownBeep(false);
+
+    this.particles.showFloatingText(640, 260, `GOL DE OURO - ${this.goldenGoalPeriod}º PERÍODO`, '#facc15');
+
+    this.onStateChange?.(this.state);
+    this.onScoreChange?.(this.stats.p1Goals, this.stats.p2Goals);
+    this.onTimeChange?.(Math.ceil(this.matchTime));
+    this.onGoldenGoalTick?.(this.goldenGoalPeriod, Math.ceil(this.matchTime));
+    this.onGoldenGoalPeriodChange?.(this.goldenGoalPeriod);
+  }
+
   public restart() {
-    this.startMatch();
+    if (this.isGoldenGoalActive) {
+      this.startGoldenGoalMatch(
+        this.p1.team,
+        this.p2.team,
+        this.ai.difficulty,
+        1,
+        120,
+        this.aggOffsetP1,
+        this.aggOffsetP2,
+        0,
+        0
+      );
+    } else {
+      this.startMatch();
+    }
   }
 
   public pause() {
@@ -229,6 +310,12 @@ export class GameEngine {
       this.ball.update(dt, this.groundY, 0, this.virtualWidth, 30);
 
       if (this.goalCelebrationTimer <= 0) {
+        if (this.isGoldenGoalActive) {
+          // REGRA DE OURO: O primeiro clube a marcar vence IMEDIATAMENTE!
+          this.finishMatch();
+          return;
+        }
+
         if (this.matchTime <= 0) {
           this.finishMatch();
         } else {
@@ -267,14 +354,36 @@ export class GameEngine {
     const currentSeconds = Math.ceil(this.matchTime);
 
     if (currentSeconds !== prevSeconds) {
-      this.onTimeChange?.(Math.max(0, currentSeconds));
+      const positiveSecs = Math.max(0, currentSeconds);
+      this.onTimeChange?.(positiveSecs);
+      if (this.isGoldenGoalActive) {
+        this.goldenGoalTimeLeft = positiveSecs;
+        this.onGoldenGoalTick?.(this.goldenGoalPeriod, positiveSecs);
+      }
     }
 
-    // Fim do tempo
+    // Fim do tempo do período atual
     if (this.matchTime <= 0) {
-      this.matchTime = 0;
-      this.finishMatch();
-      return;
+      if (this.isGoldenGoalActive) {
+        // REGRA DO GOL DE OURO: Ao chegar a zero sem gol, começa automaticamente o período seguinte de 2 minutos
+        this.goldenGoalPeriod += 1;
+        this.matchTime = this.goldenGoalPeriodDuration;
+        this.goldenGoalTimeLeft = this.goldenGoalPeriodDuration;
+        this.resetPositionsForKickoff();
+        this.state = 'COUNTDOWN';
+        this.countdownTimer = 2.5;
+        sound.playCountdownBeep(false);
+        this.particles.showFloatingText(640, 280, `GOL DE OURO - ${this.goldenGoalPeriod}º PERÍODO`, '#facc15');
+        this.onGoldenGoalPeriodChange?.(this.goldenGoalPeriod);
+        this.onGoldenGoalTick?.(this.goldenGoalPeriod, this.goldenGoalPeriodDuration);
+        this.onTimeChange?.(this.goldenGoalPeriodDuration);
+        this.onStateChange?.(this.state);
+        return;
+      } else {
+        this.matchTime = 0;
+        this.finishMatch();
+        return;
+      }
     }
 
     // Atualiza Jogador 1 (Humano)
@@ -361,9 +470,12 @@ export class GameEngine {
     const basePower = 520 + charge * 290;
     let kickPower = isSuper ? 880 + charge * 120 : basePower;
 
-    // Habilidade CANHÃO (Rubro Imperial)
-    if (p.team.ability?.id === 'canhao') {
-      kickPower = isSuper ? 1000 : basePower * 1.18 + 50;
+    // Habilidade CANHÃO (Rubro Imperial) / COLORADO (Internacional)
+    if (p.team.ability?.id === 'canhao' || p.team.ability?.id === 'colorado') {
+      kickPower = isSuper ? 1000 : basePower * 1.20 + 50;
+    } else if (p.team.ability?.id === 'raio_solar' && charge > 0.35) {
+      // Sol de Ouro: Chutes carregados devastadores
+      kickPower = isSuper ? 1020 : basePower * 1.28 + 60;
     } else if (p.team.ability?.id === 'falcao') {
       kickPower = isSuper ? 920 : basePower * 1.08 + 20;
     }
@@ -371,8 +483,8 @@ export class GameEngine {
     // Ângulo de chute
     let kickAngle = (p.facing === 1 ? 0.65 : Math.PI - 0.65);
 
-    // Habilidade ESTRELA (Estrela Alvinegra): mira refinada ao canto do gol
-    if (p.team.ability?.id === 'estrela') {
+    // Habilidade ESTRELA (Estrela Alvinegra) / CONSTELAÇÃO (Cruzeiro Celeste): mira refinada ao ângulo do gol
+    if (p.team.ability?.id === 'estrela' || p.team.ability?.id === 'constelacao') {
       const targetX = p.facing === 1 ? this.goalRight.postX : this.goalLeft.postX;
       const targetY = this.goalRight.crossbarY + 28;
       const dx = targetX - p.x;
@@ -437,9 +549,14 @@ export class GameEngine {
       p1.x -= (p2.mass / totalMass) * overlap;
       p2.x += (p1.mass / totalMass) * overlap;
 
-      // Habilidade FORTALEZA: sofre menos perda de velocidade/empurrão na colisão física
-      p1.vx *= (p1.team.ability?.id === 'fortaleza' ? 0.78 : 0.5);
-      p2.vx *= (p2.team.ability?.id === 'fortaleza' ? 0.78 : 0.5);
+      // Habilidade FORTALEZA / MURALHA VERDE / IMORTALIDADE: estabilidade máxima na dividida
+      const isTank1 = ['fortaleza', 'muralha_verde', 'imortalidade'].includes(p1.team.ability?.id || '');
+      const isTank2 = ['fortaleza', 'muralha_verde', 'imortalidade'].includes(p2.team.ability?.id || '');
+      const isFastRec1 = p1.team.ability?.id === 'esperanca';
+      const isFastRec2 = p2.team.ability?.id === 'esperanca';
+
+      p1.vx *= isFastRec1 ? 0.9 : (isTank1 ? 0.82 : 0.5);
+      p2.vx *= isFastRec2 ? 0.9 : (isTank2 ? 0.82 : 0.5);
     }
 
     // 2. Colisão Bola com as Traves e Travessão
@@ -514,19 +631,25 @@ export class GameEngine {
       ball.x += nx * overlap;
       ball.y += ny * overlap;
 
-      // Impulso base de cabeceio calibrado (evita disparos aéreos indefensáveis a partir do meio-campo)
+      // Impulso base de cabeceio calibrado
       let forwardBoost = p.facing * 95;
       let jumpBoost = p.vy < 0 ? -110 : 0;
       let headerPower = 295;
       let playerSpeedTransfer = p.vx * 0.32;
 
-      // Habilidade MURALHA (Cruz de Prata): cabeceios mais potentes e impositivos
+      // Habilidade MURALHA (Cruz de Prata) / GALO DE AÇO (Atlético das Gerais)
       if (p.team.ability?.id === 'muralha') {
         forwardBoost = p.facing * 140;
         jumpBoost = p.vy < 0 ? -150 : -25;
         headerPower = 370;
         playerSpeedTransfer = p.vx * 0.45;
         this.particles.showFloatingText(head.x, head.y - 25, 'MURALHA AÉREA! 🛡️', '#cbd5e1');
+      } else if (p.team.ability?.id === 'galo_de_aco') {
+        forwardBoost = p.facing * 150;
+        jumpBoost = p.vy < 0 ? -160 : -30;
+        headerPower = 385;
+        playerSpeedTransfer = p.vx * 0.48;
+        this.particles.showFloatingText(head.x, head.y - 25, 'GALO DE AÇO! 🐓', '#facc15');
       } else if (p.team.ability?.id === 'falcao') {
         forwardBoost = p.facing * 115;
         headerPower = 325;
@@ -566,16 +689,19 @@ export class GameEngine {
         const basePower = 520 + charge * 290;
         let kickPower = isSuper ? 880 + charge * 120 : basePower;
 
-        // Habilidade CANHÃO (Rubro Imperial): chute mais potente
-        if (p.team.ability?.id === 'canhao') {
-          kickPower = isSuper ? 1000 : basePower * 1.18 + 50;
-          this.particles.showFloatingText(foot.x, foot.y - 30, 'CANHÃO! 💣', '#dc2626');
+        // Habilidade CANHÃO (Rubro Imperial) / COLORADO (Internacional)
+        if (p.team.ability?.id === 'canhao' || p.team.ability?.id === 'colorado') {
+          kickPower = isSuper ? 1000 : basePower * 1.20 + 50;
+          this.particles.showFloatingText(foot.x, foot.y - 30, p.team.ability.id === 'canhao' ? 'CANHÃO! 💣' : 'COLORADO! 💥', '#dc2626');
+        } else if (p.team.ability?.id === 'raio_solar' && charge > 0.35) {
+          kickPower = isSuper ? 1020 : basePower * 1.28 + 60;
+          this.particles.showFloatingText(foot.x, foot.y - 30, 'RAIO SOLAR! ☀️', '#eab308');
         } else if (p.team.ability?.id === 'falcao') {
           kickPower = isSuper ? 920 : basePower * 1.08 + 20;
         }
 
-        // Habilidade ESTRELA (Estrela Alvinegra): precisão refinada em direção ao canto do gol
-        if (p.team.ability?.id === 'estrela') {
+        // Habilidade ESTRELA (Estrela Alvinegra) / CONSTELAÇÃO (Cruzeiro Celeste)
+        if (p.team.ability?.id === 'estrela' || p.team.ability?.id === 'constelacao') {
           const targetX = p.facing === 1 ? this.goalRight.postX : this.goalLeft.postX;
           const targetY = this.goalRight.crossbarY + 28;
           const dx = targetX - p.x;
@@ -583,7 +709,12 @@ export class GameEngine {
           let precisionAngle = Math.atan2(-dy, Math.abs(dx));
           precisionAngle = clamp(precisionAngle, 0.45, 0.82);
           kickAngle = p.facing === 1 ? precisionAngle : Math.PI - precisionAngle;
-          this.particles.showFloatingText(foot.x, foot.y - 30, 'MIRA ESTRELA! ⭐', '#ffffff');
+          this.particles.showFloatingText(
+            foot.x,
+            foot.y - 30,
+            p.team.ability.id === 'constelacao' ? 'CONSTELAÇÃO! ✨' : 'MIRA ESTRELA! ⭐',
+            '#ffffff'
+          );
         }
 
         ball.applyKick(kickAngle, kickPower, isSuper, p.id);
@@ -621,14 +752,20 @@ export class GameEngine {
       const nx = (ball.x - bodyX) / d;
       const ny = (ball.y - bodyY) / d;
 
-      // Habilidade MAESTRO (Tricolor das Laranjeiras): amortece a bola para os pés suavemente
-      if (p.team.ability?.id === 'maestro' && !p.isKicking) {
+      // Habilidade MAESTRO / ESQUADRÃO: amortece a bola para os pés suavemente
+      const isBallMaster = p.team.ability?.id === 'maestro' || p.team.ability?.id === 'esquadrao';
+      if (isBallMaster && !p.isKicking) {
         ball.x = bodyX + nx * minBodyDist;
         ball.y = bodyY + ny * minBodyDist;
         ball.vx = p.facing * 75 + p.vx * 0.2;
         ball.vy = Math.min(ball.vy * 0.25, 25);
         ball.lastHitBy = p.id;
-        this.particles.showFloatingText(p.x, p.y - 45, 'DOMÍNIO MAESTRO! 🎵', '#059669');
+        this.particles.showFloatingText(
+          p.x,
+          p.y - 45,
+          p.team.ability.id === 'esquadrao' ? 'ESQUADRÃO! 🛡️' : 'DOMÍNIO MAESTRO! 🎵',
+          '#059669'
+        );
       } else {
         ball.x = bodyX + nx * minBodyDist;
         ball.y = bodyY + ny * minBodyDist;
@@ -673,8 +810,16 @@ export class GameEngine {
     const scorerPlayer = scorer === 'p1' ? this.p1 : this.p2;
     scorerPlayer.celebrate();
 
-    const bannerText = scorer === 'p1' ? `GOL DE ${this.p1.team.name.toUpperCase()}!` : `GOL DE ${this.p2.team.name.toUpperCase()}!`;
-    this.particles.showFloatingText(640, 320, '⚽ GOOOOL! ⚽', '#facc15');
+    const bannerText = this.isGoldenGoalActive
+      ? `⚡ GOL DE OURO! ${scorer === 'p1' ? this.p1.team.name.toUpperCase() : this.p2.team.name.toUpperCase()} VENCE! ⚡`
+      : (scorer === 'p1' ? `GOL DE ${this.p1.team.name.toUpperCase()}!` : `GOL DE ${this.p2.team.name.toUpperCase()}!`);
+
+    this.particles.showFloatingText(
+      640,
+      320,
+      this.isGoldenGoalActive ? '⚡ GOL DE OURO! ⚡' : '⚽ GOOOOL! ⚽',
+      '#facc15'
+    );
 
     this.onGoalScored?.(scorer, bannerText);
     this.onStateChange?.(this.state);
@@ -696,10 +841,15 @@ export class GameEngine {
     sound.playWhistle(true);
 
     let winner: 'p1' | 'p2' | 'draw' = 'draw';
-    if (this.stats.p1Goals > this.stats.p2Goals) {
-      winner = 'p1';
-    } else if (this.stats.p2Goals > this.stats.p1Goals) {
-      winner = 'p2';
+    if (this.isGoldenGoalActive) {
+      // REGRA UNIVERSAL DO GOL DE OURO: quem marcou na prorrogação vence imediatamente
+      winner = this.lastScorer === 'p1' ? 'p1' : 'p2';
+    } else {
+      if (this.stats.p1Goals > this.stats.p2Goals) {
+        winner = 'p1';
+      } else if (this.stats.p2Goals > this.stats.p1Goals) {
+        winner = 'p2';
+      }
     }
 
     this.onStateChange?.(this.state);

@@ -385,6 +385,339 @@ export const ClubCrest: React.FC<CrestProps> = ({ clubId, size = 48, className =
         </svg>
       );
 
+    case 'cruzeiro_celeste':
+      // 9. CRUZEIRO CELESTE: azul royal com constelação do Cruzeiro do Sul em estrelas brancas
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="cruzeiroClip">
+              <path d="M50 5 L88 20 C88 66 50 95 50 95 C50 95 12 66 12 20 Z" />
+            </clipPath>
+          </defs>
+          <path d="M50 3 L90 19 C90 68 50 97 50 97 C50 97 10 68 10 19 Z" fill="#FACC15" stroke="#1D4ED8" strokeWidth="2" />
+          <g clipPath="url(#cruzeiroClip)">
+            <rect width="100" height="100" fill="#1D4ED8" />
+            <circle cx="50" cy="50" r="32" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeDasharray="3 3" />
+            {/* 5 Estrelas da Constelação */}
+            {/* Alfa Crucis (Sul) */}
+            <polygon points="50,68 52,73 57,73 53,76 54,81 50,78 46,81 47,76 43,73 48,73" fill="#FFFFFF" />
+            {/* Gama Crucis (Norte) */}
+            <polygon points="50,22 52,27 57,27 53,30 54,35 50,32 46,35 47,30 43,27 48,27" fill="#FFFFFF" />
+            {/* Beta Crucis (Leste) */}
+            <polygon points="34,45 36,50 41,50 37,53 38,58 34,55 30,58 31,53 27,50 32,50" fill="#FFFFFF" />
+            {/* Delta Crucis (Oeste) */}
+            <polygon points="66,42 68,47 73,47 69,50 70,55 66,52 62,55 63,50 59,47 64,47" fill="#FFFFFF" />
+            {/* Epsilon Crucis (Intrometida) */}
+            <polygon points="57,53 58,56 61,56 59,58 60,61 57,59 55,61 56,58 53,56 56,56" fill="#FACC15" />
+          </g>
+        </svg>
+      );
+
+    case 'furacao_rubro_negro':
+      // 10. FURACÃO RUBRO-NEGRO: vermelho e preto com faixas diagonais dinâmicas e tufão
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="furacaoClip">
+              <polygon points="50,5 92,20 86,76 50,96 14,76 8,20" />
+            </clipPath>
+          </defs>
+          <polygon points="50,3 94,19 88,78 50,98 12,78 6,19" fill="#FFFFFF" stroke="#DC2626" strokeWidth="2.5" />
+          <g clipPath="url(#furacaoClip)">
+            <rect width="100" height="100" fill="#18181B" />
+            {/* Faixas em tufão / vendaval diagonal */}
+            <polygon points="20,0 45,0 10,100 -15,100" fill="#DC2626" />
+            <polygon points="48,0 73,0 38,100 13,100" fill="#DC2626" />
+            <polygon points="76,0 101,0 66,100 41,100" fill="#DC2626" />
+            <path d="M30 50 Q 50 30, 70 50 T 50 75 Z" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="50" cy="50" r="5" fill="#FFFFFF" />
+          </g>
+        </svg>
+      );
+
+    case 'coritiba_araucarias':
+      // 11. CORITIBA DAS ARAUCÁRIAS: verde e branco com silhueta da majestosa Araucária
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="araucariaClip">
+              <circle cx="50" cy="50" r="44" />
+            </clipPath>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="#15803D" stroke="#FFFFFF" strokeWidth="3" />
+          <g clipPath="url(#araucariaClip)">
+            <rect width="100" height="100" fill="#15803D" />
+            {/* Duas faixas brancas horizontais */}
+            <rect x="0" y="32" width="100" height="8" fill="#FFFFFF" />
+            <rect x="0" y="60" width="100" height="8" fill="#FFFFFF" />
+            {/* Araucária central estilizada */}
+            <g transform="translate(50, 48)">
+              <rect x="-2" y="-10" width="4" height="28" fill="#451A03" />
+              {/* Copas da araucária em leque */}
+              <ellipse cx="0" cy="-14" rx="22" ry="5" fill="#166534" stroke="#FFFFFF" strokeWidth="1" />
+              <ellipse cx="0" cy="-20" rx="16" ry="4" fill="#22C55E" />
+              <circle cx="-16" cy="-14" r="3" fill="#FFFFFF" />
+              <circle cx="16" cy="-14" r="3" fill="#FFFFFF" />
+            </g>
+          </g>
+        </svg>
+      );
+
+    case 'chapeco_esmeralda':
+      // 12. CHAPECÓ ESMERALDA: verde esmeralda com estrela dourada da esperança e flecha condá
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="chapecoClip">
+              <path d="M50 8 L86 24 C86 66 50 94 50 94 C50 94 14 66 14 24 Z" />
+            </clipPath>
+          </defs>
+          {/* Estrela dourada no topo acima do escudo */}
+          <polygon points="50,1 52,6 57,6 53,9 54,14 50,11 46,14 47,9 43,6 48,6" fill="#FACC15" />
+          <path d="M50 7 L88 23 C88 68 50 96 50 96 C50 96 12 68 12 23 Z" fill="#FFFFFF" stroke="#047857" strokeWidth="2" />
+          <g clipPath="url(#chapecoClip)">
+            <rect width="100" height="100" fill="#047857" />
+            {/* Ramos verdes da esperança */}
+            <circle cx="50" cy="50" r="26" stroke="#FFFFFF" strokeWidth="2" fill="none" />
+            <path d="M35 55 Q 50 35, 65 55 Q 50 62, 35 55 Z" fill="#FACC15" />
+            <polygon points="50,32 54,44 50,42 46,44" fill="#FFFFFF" />
+          </g>
+        </svg>
+      );
+
+    case 'leao_amazonia':
+      // 13. LEÃO DA AMAZÔNIA: azul-marinho profundo com perfil do leão estilizado em azul celeste e branco
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="leaoClip">
+              <path d="M50 5 L88 20 C88 66 50 95 50 95 C50 95 12 66 12 20 Z" />
+            </clipPath>
+          </defs>
+          <path d="M50 3 L90 19 C90 68 50 97 50 97 C50 97 10 68 10 19 Z" fill="#38BDF8" stroke="#0F172A" strokeWidth="2.5" />
+          <g clipPath="url(#leaoClip)">
+            <rect width="100" height="100" fill="#0F172A" />
+            {/* Faixa diagonal azul celeste */}
+            <polygon points="12,20 30,20 88,80 70,80" fill="#0369A1" />
+            {/* Cabeça do Leão estilizada */}
+            <g transform="translate(50, 48)">
+              {/* Juba do leão */}
+              <circle cx="0" cy="0" r="22" fill="#0284C7" />
+              <polygon points="0,-24 7,-15 -7,-15" fill="#38BDF8" />
+              <polygon points="-22,-5 -14,2 -18,-12" fill="#38BDF8" />
+              <polygon points="22,-5 14,2 18,-12" fill="#38BDF8" />
+              {/* Rosto do leão */}
+              <circle cx="0" cy="2" r="14" fill="#FFFFFF" />
+              <polygon points="-4,2 4,2 0,7" fill="#0F172A" />
+              <circle cx="-5" cy="-2" r="2" fill="#0F172A" />
+              <circle cx="5" cy="-2" r="2" fill="#0F172A" />
+            </g>
+          </g>
+        </svg>
+      );
+
+    case 'sol_de_ouro':
+      // 14. SOL DE OURO: amarelo solar com sol geométrico sobre verde e preto pantaneiro
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="solClip">
+              <polygon points="50,4 92,24 76,88 50,96 24,88 8,24" />
+            </clipPath>
+          </defs>
+          <polygon points="50,2 94,23 78,90 50,98 22,90 6,23" fill="#15803D" stroke="#18181B" strokeWidth="2" />
+          <g clipPath="url(#solClip)">
+            <rect width="100" height="100" fill="#EAB308" />
+            {/* Metade inferior verde e preta */}
+            <polygon points="0,55 100,55 100,100 0,100" fill="#15803D" />
+            <polygon points="0,75 100,75 100,100 0,100" fill="#18181B" />
+            {/* Sol radiante */}
+            <g transform="translate(50, 48)">
+              <circle cx="0" cy="0" r="18" fill="#FACC15" stroke="#78350F" strokeWidth="1.5" />
+              {/* Raios do sol */}
+              {[0, 45, 90, 135, 180, 225, 270, 315].map((ang) => (
+                <line
+                  key={ang}
+                  x1={Math.cos((ang * Math.PI) / 180) * 20}
+                  y1={Math.sin((ang * Math.PI) / 180) * 20}
+                  x2={Math.cos((ang * Math.PI) / 180) * 27}
+                  y2={Math.sin((ang * Math.PI) / 180) * 27}
+                  stroke="#CA8A04"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+              ))}
+              <circle cx="0" cy="0" r="10" fill="#FEF08A" />
+            </g>
+          </g>
+        </svg>
+      );
+
+    case 'bahia_tricolor':
+      // 15. BAHIA TRICOLOR: azul, vermelho e branco com estrela da vitória e faixas clássicas
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="bahiaClip">
+              <path d="M50 5 L88 20 C88 66 50 95 50 95 C50 95 12 66 12 20 Z" />
+            </clipPath>
+          </defs>
+          <path d="M50 3 L90 19 C90 68 50 97 50 97 C50 97 10 68 10 19 Z" fill="#FACC15" stroke="#1E3A8A" strokeWidth="2" />
+          <g clipPath="url(#bahiaClip)">
+            {/* Fundo azul */}
+            <rect width="100" height="100" fill="#2563EB" />
+            {/* Faixa branca horizontal */}
+            <rect x="0" y="34" width="100" height="32" fill="#FFFFFF" />
+            {/* Faixa vermelha horizontal */}
+            <rect x="0" y="44" width="100" height="12" fill="#DC2626" />
+            {/* Timão / Círculo nobre central com estrela */}
+            <circle cx="50" cy="50" r="18" fill="#1E3A8A" stroke="#FACC15" strokeWidth="2" />
+            <polygon points="50,38 53,46 61,46 55,51 57,59 50,54 43,59 45,51 39,46 47,46" fill="#FFFFFF" />
+          </g>
+        </svg>
+      );
+
+    case 'tricolor_pampas':
+      // 16. TRICOLOR DOS PAMPAS: azul celeste, preto e branco em listras verticais com monograma prateado
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="pampasClip">
+              <path d="M50 5 C76 5 88 18 88 38 C88 68 50 95 50 95 C50 95 12 68 12 38 C12 18 24 5 50 5 Z" />
+            </clipPath>
+          </defs>
+          <path d="M50 3 C78 3 90 17 90 38 C90 70 50 97 50 97 C50 97 10 70 10 38 C10 17 22 3 50 3 Z" fill="#FFFFFF" stroke="#0284C7" strokeWidth="2.5" />
+          <g clipPath="url(#pampasClip)">
+            <rect width="100" height="100" fill="#0284C7" />
+            {/* Listras pretas com frisos brancos */}
+            <rect x="22" y="0" width="16" height="100" fill="#18181B" />
+            <rect x="42" y="0" width="16" height="100" fill="#18181B" />
+            <rect x="62" y="0" width="16" height="100" fill="#18181B" />
+            <rect x="20" y="0" width="2" height="100" fill="#FFFFFF" />
+            <rect x="38" y="0" width="4" height="100" fill="#FFFFFF" />
+            <rect x="58" y="0" width="4" height="100" fill="#FFFFFF" />
+            <rect x="78" y="0" width="2" height="100" fill="#FFFFFF" />
+            {/* Bola e faixa central */}
+            <circle cx="50" cy="50" r="17" fill="#FFFFFF" stroke="#18181B" strokeWidth="2" />
+            <circle cx="50" cy="50" r="13" fill="#0284C7" />
+            <text x="50" y="55" fontSize="12" fontWeight="900" fill="#FFFFFF" textAnchor="middle" fontFamily="Outfit, sans-serif">P</text>
+          </g>
+        </svg>
+      );
+
+    case 'internacional_gaucho':
+      // 17. INTERNACIONAL GAÚCHO: vermelho vibrante com coroa de louros e monograma clássico branco
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="interClip">
+              <circle cx="50" cy="50" r="44" />
+            </clipPath>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="#DC2626" stroke="#FFFFFF" strokeWidth="3" />
+          <g clipPath="url(#interClip)">
+            <rect width="100" height="100" fill="#DC2626" />
+            <circle cx="50" cy="50" r="38" stroke="#FFFFFF" strokeWidth="2.5" fill="none" />
+            {/* Coroa de Louros estilizada em arco */}
+            <path d="M26 50 C26 70 74 70 74 50" stroke="#FFFFFF" strokeWidth="3" fill="none" strokeDasharray="4 4" />
+            {/* Letras entrelaçadas IG */}
+            <g transform="translate(50, 48)">
+              <circle cx="0" cy="0" r="16" fill="#B91C1C" stroke="#FFFFFF" strokeWidth="2" />
+              <text x="0" y="6" fontSize="16" fontWeight="900" fill="#FFFFFF" textAnchor="middle" fontFamily="Outfit, sans-serif">I</text>
+            </g>
+          </g>
+        </svg>
+      );
+
+    case 'atletico_gerais':
+      // 18. ATLÉTICO DAS GERAIS: escudo pontiagudo alvinegro com o Galo de Aço imponente
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="galoClip">
+              <path d="M50 4 L90 20 L84 66 L50 96 L16 66 L10 20 Z" />
+            </clipPath>
+          </defs>
+          <path d="M50 2 L92 19 L86 68 L50 98 L14 68 L8 19 Z" fill="#FACC15" stroke="#18181B" strokeWidth="2.5" />
+          <g clipPath="url(#galoClip)">
+            <rect width="100" height="100" fill="#FFFFFF" />
+            {/* Listras pretas verticais */}
+            <rect x="18" y="0" width="13" height="100" fill="#18181B" />
+            <rect x="44" y="0" width="12" height="100" fill="#18181B" />
+            <rect x="69" y="0" width="13" height="100" fill="#18181B" />
+            {/* Galo de Aço no topo central */}
+            <g transform="translate(50, 42)">
+              <circle cx="0" cy="0" r="15" fill="#18181B" stroke="#FACC15" strokeWidth="2" />
+              {/* Crista vermelha do galo */}
+              <polygon points="0,-12 4,-7 0,-4" fill="#DC2626" />
+              <polygon points="4,-11 7,-6 3,-4" fill="#DC2626" />
+              {/* Bico dourado */}
+              <polygon points="6,0 12,2 6,4" fill="#FACC15" />
+              {/* Olho de aço */}
+              <circle cx="1" cy="-1" r="2.5" fill="#FFFFFF" />
+              <circle cx="2" cy="-1" r="1" fill="#18181B" />
+            </g>
+          </g>
+        </svg>
+      );
+
+    case 'braganca_rubro_negro':
+      // 19. BRAGANÇA RUBRO-NEGRO: vermelho, branco e preto com turbina aerodinâmica
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="bragancaClip">
+              <polygon points="50,4 90,24 80,82 50,96 20,82 10,24" />
+            </clipPath>
+          </defs>
+          <polygon points="50,2 92,23 82,84 50,98 18,84 8,23" fill="#FFFFFF" stroke="#DC2626" strokeWidth="2.5" />
+          <g clipPath="url(#bragancaClip)">
+            <rect width="100" height="100" fill="#DC2626" />
+            {/* Base preta e branca */}
+            <polygon points="0,50 100,50 100,100 0,100" fill="#18181B" />
+            <line x1="0" y1="50" x2="100" y2="50" stroke="#FFFFFF" strokeWidth="4" />
+            {/* Turbina com pás brancas */}
+            <g transform="translate(50, 46)">
+              <circle cx="0" cy="0" r="20" fill="#18181B" stroke="#FFFFFF" strokeWidth="2" />
+              {[0, 90, 180, 270].map((ang) => (
+                <path
+                  key={ang}
+                  d="M0 0 L14 -5 Q18 0 12 6 Z"
+                  fill="#FFFFFF"
+                  transform={`rotate(${ang})`}
+                />
+              ))}
+              <circle cx="0" cy="0" r="5" fill="#DC2626" />
+            </g>
+          </g>
+        </svg>
+      );
+
+    case 'vitoria_rubra':
+      // 20. VITÓRIA RUBRA: listras horizontais vermelho e preto com fúria rubra e âncora dourada
+      return (
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="vitoriaClip">
+              <path d="M50 5 L88 20 C88 66 50 95 50 95 C50 95 12 66 12 20 Z" />
+            </clipPath>
+          </defs>
+          <path d="M50 3 L90 19 C90 68 50 97 50 97 C50 97 10 68 10 19 Z" fill="#FACC15" stroke="#18181B" strokeWidth="2" />
+          <g clipPath="url(#vitoriaClip)">
+            <rect width="100" height="100" fill="#18181B" />
+            {/* Listras horizontais vermelhas */}
+            <rect x="0" y="20" width="100" height="12" fill="#DC2626" />
+            <rect x="0" y="44" width="100" height="12" fill="#DC2626" />
+            <rect x="0" y="68" width="100" height="12" fill="#DC2626" />
+            {/* Monograma central V dourado com garras */}
+            <g transform="translate(50, 48)">
+              <circle cx="0" cy="0" r="18" fill="#18181B" stroke="#FACC15" strokeWidth="2" />
+              <path d="M-8 -9 L0 10 L8 -9 L4 -9 L0 4 L-4 -9 Z" fill="#FACC15" stroke="#B45309" strokeWidth="0.8" />
+            </g>
+          </g>
+        </svg>
+      );
+
     default:
       return (
         <div
@@ -529,6 +862,173 @@ export function drawCrestToCanvas(
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
       ctx.arc(0, radius * 0.35, radius * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'cruzeiro_celeste': {
+      ctx.fillStyle = '#1D4ED8';
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+      ctx.fillStyle = '#FFFFFF';
+      // 5 estrelas em pontinhos
+      const pts = [[0, -radius * 0.55], [0, radius * 0.55], [-radius * 0.45, -radius * 0.1], [radius * 0.45, -radius * 0.15], [radius * 0.18, radius * 0.1]];
+      pts.forEach(([px, py]) => {
+        ctx.beginPath();
+        ctx.arc(px, py, radius * 0.14, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      break;
+    }
+    case 'furacao_rubro_negro': {
+      ctx.fillStyle = '#18181B';
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+      ctx.fillStyle = '#DC2626';
+      ctx.beginPath();
+      ctx.moveTo(-radius, radius * 0.6);
+      ctx.lineTo(radius * 0.6, -radius);
+      ctx.lineTo(radius, -radius);
+      ctx.lineTo(-radius * 0.2, radius);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'coritiba_araucarias': {
+      ctx.fillStyle = '#15803D';
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(-radius, -radius * 0.35, radius * 2, radius * 0.2);
+      ctx.fillRect(-radius, radius * 0.2, radius * 2, radius * 0.2);
+      ctx.fillStyle = '#166534';
+      ctx.beginPath();
+      ctx.arc(0, -radius * 0.1, radius * 0.32, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'chapeco_esmeralda': {
+      ctx.fillStyle = '#047857';
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.5, 0, Math.PI * 2);
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#FACC15';
+      ctx.beginPath();
+      ctx.arc(0, -radius * 0.55, radius * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'leao_amazonia': {
+      ctx.fillStyle = '#0F172A';
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+      ctx.fillStyle = '#0284C7';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(0, radius * 0.05, radius * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'sol_de_ouro': {
+      ctx.fillStyle = '#EAB308';
+      ctx.fillRect(-radius, -radius, radius * 2, radius);
+      ctx.fillStyle = '#15803D';
+      ctx.fillRect(-radius, 0, radius * 2, radius);
+      ctx.fillStyle = '#FEF08A';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#CA8A04';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      break;
+    }
+    case 'bahia_tricolor': {
+      ctx.fillStyle = '#2563EB';
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 0.7);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(-radius, -radius * 0.3, radius * 2, radius * 0.6);
+      ctx.fillStyle = '#DC2626';
+      ctx.fillRect(-radius, -radius * 0.05, radius * 2, radius * 0.35);
+      ctx.fillStyle = '#FACC15';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'tricolor_pampas': {
+      ctx.fillStyle = '#0284C7';
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+      ctx.fillStyle = '#18181B';
+      ctx.fillRect(-radius * 0.5, -radius, radius * 0.35, radius * 2);
+      ctx.fillRect(radius * 0.15, -radius, radius * 0.35, radius * 2);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'internacional_gaucho': {
+      ctx.fillStyle = '#DC2626';
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'atletico_gerais': {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+      ctx.fillStyle = '#18181B';
+      ctx.fillRect(-radius * 0.6, -radius, radius * 0.35, radius * 2);
+      ctx.fillRect(radius * 0.25, -radius, radius * 0.35, radius * 2);
+      ctx.fillStyle = '#18181B';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#DC2626';
+      ctx.beginPath();
+      ctx.arc(0, -radius * 0.2, radius * 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'braganca_rubro_negro': {
+      ctx.fillStyle = '#DC2626';
+      ctx.fillRect(-radius, -radius, radius * 2, radius);
+      ctx.fillStyle = '#18181B';
+      ctx.fillRect(-radius, 0, radius * 2, radius);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#DC2626';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'vitoria_rubra': {
+      ctx.fillStyle = '#18181B';
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+      ctx.fillStyle = '#DC2626';
+      ctx.fillRect(-radius, -radius * 0.6, radius * 2, radius * 0.3);
+      ctx.fillRect(-radius, 0, radius * 2, radius * 0.3);
+      ctx.fillRect(-radius, radius * 0.6, radius * 2, radius * 0.3);
+      ctx.fillStyle = '#FACC15';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.3, 0, Math.PI * 2);
       ctx.fill();
       break;
     }

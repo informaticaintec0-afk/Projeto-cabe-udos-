@@ -628,6 +628,124 @@ export class GameRenderer {
         ctx.fillStyle = '#18181B';
         ctx.fillRect(-18, -14, 36, 3);
         break;
+
+      case 'celeste-stars': // Cruzeiro Celeste: azul royal com estrelas brancas
+        ctx.fillStyle = '#1D4ED8';
+        ctx.fillRect(-18, -14, 36, 24);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(-18, -14, 36, 3);
+        ctx.beginPath();
+        ctx.arc(6, -6, 2.5, 0, Math.PI * 2);
+        ctx.arc(10, -3, 2, 0, Math.PI * 2);
+        ctx.arc(3, -2, 2, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+
+      case 'tornado-red-black': // Furacão: faixas diagonais vermelhas e pretas
+        ctx.fillStyle = '#18181B';
+        ctx.fillRect(-18, -14, 36, 24);
+        ctx.fillStyle = '#DC2626';
+        ctx.beginPath();
+        ctx.moveTo(-18, -14);
+        ctx.lineTo(-4, -14);
+        ctx.lineTo(8, 10);
+        ctx.lineTo(-6, 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(6, -14);
+        ctx.lineTo(18, -14);
+        ctx.lineTo(18, 0);
+        ctx.closePath();
+        ctx.fill();
+        break;
+
+      case 'green-white-hoops': // Coritiba: verde com duas faixas horizontais brancas no peito
+        ctx.fillStyle = '#15803D';
+        ctx.fillRect(-18, -14, 36, 24);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(-18, -7, 36, 4);
+        ctx.fillRect(-18, 1, 36, 4);
+        break;
+
+      case 'emerald-hope': // Chapecó: verde esmeralda com detalhe dourado na gola
+        ctx.fillStyle = '#047857';
+        ctx.fillRect(-18, -14, 36, 24);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(-18, -14, 36, 3);
+        break;
+
+      case 'navy-sky-lion': // Leão da Amazônia: azul-marinho com mangas em azul-celeste
+        ctx.fillStyle = '#0F172A';
+        ctx.fillRect(-18, -14, 36, 24);
+        ctx.fillStyle = '#38BDF8';
+        ctx.fillRect(-18, -14, 8, 12);
+        ctx.fillRect(10, -14, 8, 12);
+        break;
+
+      case 'sun-gold-green': // Sol de Ouro: amarelo ouro com peito verde
+        ctx.fillStyle = '#EAB308';
+        ctx.fillRect(-18, -14, 36, 24);
+        ctx.fillStyle = '#15803D';
+        ctx.fillRect(-18, -14, 36, 8);
+        ctx.fillStyle = '#18181B';
+        ctx.fillRect(-18, -6, 36, 2);
+        break;
+
+      case 'tricolor-bahia': // Bahia: azul com faixas horizontais branca e vermelha
+        ctx.fillStyle = '#2563EB';
+        ctx.fillRect(-18, -14, 36, 24);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(-18, -6, 36, 8);
+        ctx.fillStyle = '#DC2626';
+        ctx.fillRect(-18, -3, 36, 3);
+        break;
+
+      case 'tricolor-pampas': // Grêmio: azul celeste com listras pretas e frisos brancos
+        ctx.fillStyle = '#0284C7';
+        ctx.fillRect(-18, -14, 36, 24);
+        ctx.fillStyle = '#18181B';
+        ctx.fillRect(-12, -14, 6, 24);
+        ctx.fillRect(0, -14, 6, 24);
+        ctx.fillRect(12, -14, 6, 24);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(-13, -14, 1, 24);
+        ctx.fillRect(-6, -14, 1, 24);
+        ctx.fillRect(-1, -14, 1, 24);
+        ctx.fillRect(6, -14, 1, 24);
+        break;
+
+      case 'colorado-red': // Internacional: vermelho puro com gola e punhos brancos
+        ctx.fillStyle = '#DC2626';
+        ctx.fillRect(-18, -14, 36, 24);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(-18, -14, 36, 3);
+        break;
+
+      case 'striped-black-white-galo': // Atlético-MG: listras verticais pretas e brancas largas
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(-18, -14, 36, 24);
+        ctx.fillStyle = '#18181B';
+        ctx.fillRect(-18, -14, 9, 24);
+        ctx.fillRect(0, -14, 9, 24);
+        break;
+
+      case 'braganca-turbine': // Bragantino: vermelho e preto dividido com faixa branca
+        ctx.fillStyle = '#DC2626';
+        ctx.fillRect(-18, -14, 36, 12);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(-18, -2, 36, 3);
+        ctx.fillStyle = '#18181B';
+        ctx.fillRect(-18, 1, 36, 9);
+        break;
+
+      case 'vitoria-furia': // Vitória: listras horizontais vermelhas e pretas
+        ctx.fillStyle = '#18181B';
+        ctx.fillRect(-18, -14, 36, 24);
+        ctx.fillStyle = '#DC2626';
+        ctx.fillRect(-18, -14, 36, 6);
+        ctx.fillRect(-18, -2, 36, 6);
+        break;
     }
 
     ctx.restore(); // fim padrão camisa

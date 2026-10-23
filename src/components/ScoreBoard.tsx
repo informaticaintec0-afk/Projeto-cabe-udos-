@@ -18,6 +18,16 @@ interface ScoreBoardProps {
   superMeter: number;
   isPaused: boolean;
   isMuted: boolean;
+  isGoldenGoal?: boolean;
+  goldenGoalPeriod?: number;
+  aggregateInfo?: {
+    leg: 1 | 2;
+    leg1P1: number;
+    leg1P2: number;
+    aggP1: number;
+    aggP2: number;
+  } | null;
+  competitionLabel?: string;
   onTogglePause: () => void;
   onToggleMute: () => void;
 }
@@ -31,10 +41,14 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
   superMeter,
   isPaused,
   isMuted,
+  isGoldenGoal = false,
+  goldenGoalPeriod = 1,
+  aggregateInfo = null,
+  competitionLabel,
   onTogglePause,
   onToggleMute,
 }) => {
-  // Formata o tempo restante (ex: 90 -> 01:30)
+  // Formata o tempo restante (ex: 90 -> 01:30 ou 120 -> 02:00)
   const minutes = Math.floor(timeLeft / 60);
   const seconds = Math.floor(timeLeft % 60);
   const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
