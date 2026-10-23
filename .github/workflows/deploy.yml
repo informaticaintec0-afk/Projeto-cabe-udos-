@@ -1,4 +1,3 @@
-
 name: Publicar Futebol Retro
 
 on:
@@ -27,18 +26,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          
-
-      
-      - name: Instalar dependencias
-        run: npm install --legacy-peer-deps
-
-
-      - name: Compilar jogo
-        run: npm run build
 
       - name: Preparar GitHub Pages
         uses: actions/configure-pages@v5
+
+      - name: Instalar dependencias
+        run: npm install --legacy-peer-deps
+
+      - name: Compilar jogo
+        run: npm run build
 
       - name: Enviar arquivos compilados
         uses: actions/upload-pages-artifact@v3
